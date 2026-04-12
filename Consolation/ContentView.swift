@@ -86,7 +86,6 @@ struct ContentView: View {
                             Button("Stop Watching", role: .none) {
                                 capture.stopWatching()
                             }
-                            .keyboardShortcut(.cancelAction)
                             .buttonStyle(.borderedProminent)
                         }
                         .padding()
@@ -123,6 +122,19 @@ struct ContentView: View {
             }
             #endif
         }
+        #if os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { notification in
+            guard let exited = notification.object as? NSWindow,
+                  let window,
+                  exited === window,
+                  capture.state == .running
+            else { return }
+            // Defer until after AppKit restores the window frame from the pre-full-screen session.
+            DispatchQueue.main.async {
+                updateWindowAspectRatio(for: capture.videoSize)
+            }
+        }
+        #endif
         .onContinuousHover(coordinateSpace: .local) { _ in
             resetHoverTimer()
         }
@@ -131,37 +143,7 @@ struct ContentView: View {
         }
         .onTapGesture(count: 2) {
             #if os(macOS)
-            guard let window = window else { return }
-            guard let screen = window.screen else {
-                window.zoom(nil)
-                return
-            }
-
-            let visibleFrame = screen.visibleFrame
-            let aspect = capture.videoSize ?? CGSize(width: 16, height: 9)
-            let aspectWidth = aspect.width == 0 ? 16 : aspect.width
-            let aspectHeight = aspect.height == 0 ? 9 : aspect.height
-            let ratio = aspectWidth / aspectHeight
-
-            var targetWidth = visibleFrame.width
-            var targetHeight = targetWidth / ratio
-
-            // Constrain by height if it spills vertically
-            if targetHeight > visibleFrame.height {
-                targetHeight = visibleFrame.height
-                targetWidth = targetHeight * ratio
-            }
-
-            let targetX = visibleFrame.minX + (visibleFrame.width - targetWidth) / 2
-            let targetY = visibleFrame.minY + (visibleFrame.height - targetHeight) / 2
-            let targetRect = NSRect(x: targetX, y: targetY, width: targetWidth, height: targetHeight)
-
-            if abs(window.frame.width - targetWidth) < 10 {
-                // Already maximized; toggle back down native zoom route
-                window.zoom(nil)
-            } else {
-                window.setFrame(targetRect, display: true, animate: true)
-            }
+            zoomWindowToVideoAspectIfPossible()
             #endif
         }
         .background {
@@ -173,6 +155,44 @@ struct ContentView: View {
             .keyboardShortcut("m", modifiers: [])
             .hidden()
         }
+        #if os(macOS)
+        .background {
+            Group {
+                Button("") {
+                    handleSpaceOrKPlaybackShortcut()
+                }
+                .keyboardShortcut(.space, modifiers: [])
+                .hidden()
+
+                Button("") {
+                    handleSpaceOrKPlaybackShortcut()
+                }
+                .keyboardShortcut("k", modifiers: [])
+                .hidden()
+
+                Button("") {
+                    guard let window else { return }
+                    if window.styleMask.contains(.fullScreen) {
+                        window.toggleFullScreen(nil)
+                    }
+                }
+                .keyboardShortcut(.cancelAction)
+                .hidden()
+
+                Button("") {
+                    window?.toggleFullScreen(nil)
+                }
+                .keyboardShortcut("f", modifiers: [])
+                .hidden()
+
+                Button("") {
+                    zoomWindowToVideoAspectIfPossible()
+                }
+                .keyboardShortcut("z", modifiers: [])
+                .hidden()
+            }
+        }
+        #endif
         #if DEBUG
         .sheet(isPresented: $showDeviceDebug) {
             CaptureDeviceDebugView()
@@ -241,6 +261,15 @@ struct ContentView: View {
         capture.state == .ready || capture.state == .idle || capture.isExternalCaptureDeviceConnected
     }
 
+    /// **Space** / **K**: stop while running; start when idle (same rules as the Start Watching button).
+    private func handleSpaceOrKPlaybackShortcut() {
+        if capture.state == .running {
+            capture.stopWatching()
+        } else if canStartWatching, capture.state != .requestingPermission {
+            Task { await capture.startWatching() }
+        }
+    }
+
     private func resetHoverTimer() {
         hoverTask?.cancel()
 
@@ -271,6 +300,40 @@ struct ContentView: View {
 
 #if os(macOS)
 private extension ContentView {
+    /// Double-click and **Z**: fit the window to the video aspect in the visible screen.
+    /// When already fit, toggles native zoom (`NSWindow.zoom`).
+    func zoomWindowToVideoAspectIfPossible() {
+        guard let window else { return }
+        guard let screen = window.screen else {
+            window.zoom(nil)
+            return
+        }
+
+        let visibleFrame = screen.visibleFrame
+        let aspect = capture.videoSize ?? CGSize(width: 16, height: 9)
+        let aspectWidth = aspect.width == 0 ? 16 : aspect.width
+        let aspectHeight = aspect.height == 0 ? 9 : aspect.height
+        let ratio = aspectWidth / aspectHeight
+
+        var targetWidth = visibleFrame.width
+        var targetHeight = targetWidth / ratio
+
+        if targetHeight > visibleFrame.height {
+            targetHeight = visibleFrame.height
+            targetWidth = targetHeight * ratio
+        }
+
+        let targetX = visibleFrame.minX + (visibleFrame.width - targetWidth) / 2
+        let targetY = visibleFrame.minY + (visibleFrame.height - targetHeight) / 2
+        let targetRect = NSRect(x: targetX, y: targetY, width: targetWidth, height: targetHeight)
+
+        if abs(window.frame.width - targetWidth) < 10 {
+            window.zoom(nil)
+        } else {
+            window.setFrame(targetRect, display: true, animate: true)
+        }
+    }
+
     func updateWindowAspectRatio(for videoSize: CGSize?) {
         guard capture.state == .running else {
             resetWindowAspectRatio()
