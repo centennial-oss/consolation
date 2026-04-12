@@ -17,7 +17,8 @@ private actor CaptureSessionBackend {
 
     func startWatching(
         with session: AVCaptureSession,
-        formatPreferences: CaptureVideoFormatPreferences
+        formatPreferences: CaptureVideoFormatPreferences,
+        initialAudioMuted: Bool
     ) throws -> String {
         session.beginConfiguration()
 
@@ -36,7 +37,7 @@ private actor CaptureSessionBackend {
             throw error
         }
 
-        addAudioInput(matchingVideoDevice: device, to: session)
+        addAudioInput(matchingVideoDevice: device, to: session, initialAudioMuted: initialAudioMuted)
         setPreferredSessionPresetIfAvailable(session)
 
         session.commitConfiguration()
@@ -121,7 +122,11 @@ private actor CaptureSessionBackend {
         activeVideoSize = CGSize(width: CGFloat(dims.width), height: CGFloat(dims.height))
     }
 
-    private func addAudioInput(matchingVideoDevice device: AVCaptureDevice, to session: AVCaptureSession) {
+    private func addAudioInput(
+        matchingVideoDevice device: AVCaptureDevice,
+        to session: AVCaptureSession,
+        initialAudioMuted: Bool
+    ) {
         guard let audioDevice = CaptureAudioDeviceSelection.pickPreferredAudioDevice(matchingVideoDevice: device),
               let input = try? AVCaptureDeviceInput(device: audioDevice),
               session.canAddInput(input)
@@ -131,10 +136,14 @@ private actor CaptureSessionBackend {
 
         session.addInput(input)
         audioInput = input
-        attachAudioOutput(for: input, to: session)
+        attachAudioOutput(for: input, to: session, initialAudioMuted: initialAudioMuted)
     }
 
-    private func attachAudioOutput(for input: AVCaptureDeviceInput, to session: AVCaptureSession) {
+    private func attachAudioOutput(
+        for input: AVCaptureDeviceInput,
+        to session: AVCaptureSession,
+        initialAudioMuted: Bool
+    ) {
         // Keep this low-latency AVAudioEngine path instead of AVCaptureAudioPreviewOutput.
         // Apple frameworks may log an AudioAnalytics sandbox fault for com.apple.audioanalyticsd;
         // that private daemon lookup is expected/unavoidable for sandboxed apps and should not be
@@ -159,6 +168,7 @@ private actor CaptureSessionBackend {
         session.addOutput(output)
         audioDataOutput = output
         audioPlayback = playback
+        playback.setMutedBeforeCaptureStarts(initialAudioMuted)
     }
 
     private func configureAudioOutput(_ output: AVCaptureAudioDataOutput) {
@@ -306,11 +316,15 @@ final class CaptureSessionManager: ObservableObject {
         _ = await Self.requestMicrophoneAccessIfNeeded()
 
         let prefs = formatPreferences
+        let muted = CaptureAudioUserDefaults.loadIsMuted()
         do {
-            let name = try await backend.startWatching(with: session, formatPreferences: prefs)
+            let name = try await backend.startWatching(
+                with: session,
+                formatPreferences: prefs,
+                initialAudioMuted: muted
+            )
             state = .running
             statusMessage = name
-            let muted = CaptureAudioUserDefaults.loadIsMuted()
             isAudioMuted = muted
             await backend.setAudioMuted(muted)
             videoSize = await backend.activeVideoSize

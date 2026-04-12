@@ -64,23 +64,34 @@ nonisolated final class CaptureAudioPlayback: NSObject,
         #endif
     }
 
-    /// Mute is enforced by **not scheduling** buffers and flushing the player queue — mixer `volume`
-    /// alone is unreliable on some macOS routes.
+    /// Mute is enforced by **not scheduling** buffers; mixer `volume` alone is unreliable on some macOS routes.
     func setMuted(_ muted: Bool) {
-        workQueue.async { [weak self] in
-            guard let self else { return }
-            self.muteLock.lock()
-            self.mutedFlag = muted
-            self.muteLock.unlock()
-            if muted {
-                self.playerNode.volume = 0
-            } else {
-                self.playerNode.volume = 1
-                if self.didWireEngine, self.engine.isRunning {
-                    if !self.playerNode.isPlaying {
-                        self.playerNode.play()
-                    }
-                }
+        if DispatchQueue.getSpecific(key: Self.workQueueMarker) == Self.workQueueTag {
+            applyMutedState(muted)
+        } else {
+            workQueue.async { [weak self] in
+                self?.applyMutedState(muted)
+            }
+        }
+    }
+
+    /// Install persisted mute **before** `AVCaptureSession.startRunning()` so the first samples never schedule audio.
+    func setMutedBeforeCaptureStarts(_ muted: Bool) {
+        workQueue.sync { [weak self] in
+            self?.applyMutedState(muted)
+        }
+    }
+
+    private func applyMutedState(_ muted: Bool) {
+        muteLock.lock()
+        mutedFlag = muted
+        muteLock.unlock()
+        if muted {
+            playerNode.volume = 0
+        } else {
+            playerNode.volume = 1
+            if didWireEngine, engine.isRunning, !playerNode.isPlaying {
+                playerNode.play()
             }
         }
     }
@@ -125,6 +136,7 @@ nonisolated final class CaptureAudioPlayback: NSObject,
 
     private func process(sampleBuffer: CMSampleBuffer, frameCount: CMItemCount) {
         guard !isStopped else { return }
+        guard !isMuted() else { return }
 
         guard let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer) else { return }
         let avFormat = AVAudioFormat(cmAudioFormatDescription: formatDesc)
@@ -171,7 +183,7 @@ nonisolated final class CaptureAudioPlayback: NSObject,
             return
         }
         engine.attach(playerNode)
-        playerNode.volume = 1
+        playerNode.volume = isMuted() ? 0 : 1
         engine.mainMixerNode.volume = 1
         engine.connect(playerNode, to: engine.mainMixerNode, format: format)
         engine.prepare()
