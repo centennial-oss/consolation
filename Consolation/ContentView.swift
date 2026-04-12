@@ -8,30 +8,13 @@
 import SwiftUI
 #if os(macOS)
 import AppKit
-
-struct WindowAccessor: NSViewRepresentable {
-    @Binding var window: NSWindow?
-
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async {
-            self.window = view.window
-            view.window?.isMovableByWindowBackground = true
-            view.window?.tabbingMode = .disallowed
-        }
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        nsView.window?.tabbingMode = .disallowed
-    }
-}
 #endif
 
 struct ContentView: View {
-    @StateObject private var capture = CaptureSessionManager()
+    @StateObject var capture = CaptureSessionManager()
+    @Environment(\.scenePhase) private var scenePhase
     #if os(macOS)
-    @State private var window: NSWindow?
+    @State var window: NSWindow?
     #endif
     @State private var isUIHidden = false
     @State private var hoverTask: Task<Void, Never>?
@@ -54,7 +37,16 @@ struct ContentView: View {
 
                     if statusRequiresInteraction {
                         VStack(spacing: 16) {
-                            statusText
+                            CaptureStatusLine(
+                                state: capture.state,
+                                isExternalCaptureDeviceConnected: capture.isExternalCaptureDeviceConnected,
+                                statusMessage: capture.statusMessage
+                            )
+
+                            if capture.mediaPermissionNotice != .none,
+                               capture.state != .requestingPermission {
+                                CaptureMediaPermissionEducationNotice(notice: capture.mediaPermissionNotice)
+                            }
 
                             if canStartWatching {
                                 Button("Start Watching") {
@@ -118,6 +110,9 @@ struct ContentView: View {
             #endif
         }
         .onChange(of: capture.state) { _, state in
+            if state != .running {
+                cancelAutoHideChrome()
+            }
             #if os(macOS)
             if state == .running {
                 updateWindowAspectRatio(for: capture.videoSize)
@@ -144,6 +139,12 @@ struct ContentView: View {
         }
         .onAppear {
             resetHoverTimer()
+            capture.refreshMediaCaptureAuthorizationStatuses()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                capture.refreshMediaCaptureAuthorizationStatuses()
+            }
         }
         .onTapGesture(count: 2) {
             #if os(macOS)
@@ -209,51 +210,6 @@ struct ContentView: View {
         #endif
     }
 
-    @ViewBuilder
-    private var statusText: some View {
-        switch capture.state {
-        case .idle:
-            if capture.isExternalCaptureDeviceConnected {
-                Text("Press Start Watching to view your capture device.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            } else {
-                Text("Connect a USB video capture device. Consolation will detect it automatically.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-        case .requestingPermission:
-            Text("Requesting camera access…")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-        case .noDevice:
-            Text("No capture device found.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-        case .ready:
-            Text("Ready.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-        case .running:
-            if let name = capture.statusMessage {
-                Text("Watching: \(name)")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("Watching live input.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-        case .failed(let message):
-            Text(message)
-                .font(.callout)
-                .foregroundStyle(.red)
-                .multilineTextAlignment(.center)
-        }
-    }
-
     private var statusRequiresInteraction: Bool {
         switch capture.state {
         case .running: return false
@@ -274,22 +230,21 @@ struct ContentView: View {
         }
     }
 
+    /// Auto-hide overlays and traffic-light dimming only apply while actively watching.
     private func resetHoverTimer() {
-        hoverTask?.cancel()
-
-        if isUIHidden {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                isUIHidden = false
-            }
-            #if os(macOS)
-            window?.standardWindowButton(.closeButton)?.superview?.animator().alphaValue = 1.0
-            #endif
+        guard capture.state == .running else {
+            cancelAutoHideChrome()
+            return
         }
+
+        cancelHoverHideTask()
+        revealTransientChromeIfNeeded()
 
         hoverTask = Task {
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             guard !Task.isCancelled else { return }
             await MainActor.run {
+                guard capture.state == .running else { return }
                 withAnimation(.easeInOut(duration: 0.5)) {
                     isUIHidden = true
                 }
@@ -300,98 +255,27 @@ struct ContentView: View {
             }
         }
     }
-}
 
-#if os(macOS)
-private extension ContentView {
-    /// Double-click and **Z**: fit the window to the video aspect in the visible screen.
-    /// When already fit, toggles native zoom (`NSWindow.zoom`).
-    func zoomWindowToVideoAspectIfPossible() {
-        guard let window else { return }
-        guard let screen = window.screen else {
-            window.zoom(nil)
-            return
-        }
-
-        let visibleFrame = screen.visibleFrame
-        let aspect = capture.videoSize ?? CGSize(width: 16, height: 9)
-        let aspectWidth = aspect.width == 0 ? 16 : aspect.width
-        let aspectHeight = aspect.height == 0 ? 9 : aspect.height
-        let ratio = aspectWidth / aspectHeight
-
-        var targetWidth = visibleFrame.width
-        var targetHeight = targetWidth / ratio
-
-        if targetHeight > visibleFrame.height {
-            targetHeight = visibleFrame.height
-            targetWidth = targetHeight * ratio
-        }
-
-        let targetX = visibleFrame.minX + (visibleFrame.width - targetWidth) / 2
-        let targetY = visibleFrame.minY + (visibleFrame.height - targetHeight) / 2
-        let targetRect = NSRect(x: targetX, y: targetY, width: targetWidth, height: targetHeight)
-
-        if abs(window.frame.width - targetWidth) < 10 {
-            window.zoom(nil)
-        } else {
-            window.setFrame(targetRect, display: true, animate: true)
-        }
+    private func cancelHoverHideTask() {
+        hoverTask?.cancel()
+        hoverTask = nil
     }
 
-    func updateWindowAspectRatio(for videoSize: CGSize?) {
-        guard capture.state == .running else {
-            resetWindowAspectRatio()
-            return
+    private func revealTransientChromeIfNeeded() {
+        guard isUIHidden else { return }
+        withAnimation(.easeInOut(duration: 0.3)) {
+            isUIHidden = false
         }
-        guard let window,
-              !window.styleMask.contains(.fullScreen),
-              let videoSize,
-              videoSize.width > 0,
-              videoSize.height > 0
-        else {
-            return
-        }
-
-        window.contentAspectRatio = videoSize
-        resizeWindowContentToMatchVideoAspect(window: window, videoSize: videoSize)
+        #if os(macOS)
+        window?.standardWindowButton(.closeButton)?.superview?.animator().alphaValue = 1.0
+        #endif
     }
 
-    func resetWindowAspectRatio() {
-        window?.contentResizeIncrements = NSSize(width: 1, height: 1)
-    }
-
-    func resizeWindowContentToMatchVideoAspect(window: NSWindow, videoSize: CGSize) {
-        guard let contentView = window.contentView else { return }
-
-        let contentSize = contentView.bounds.size
-        guard contentSize.width > 0, contentSize.height > 0 else { return }
-
-        let videoRatio = videoSize.width / videoSize.height
-        let contentRatio = contentSize.width / contentSize.height
-        let adjustedContentSize: CGSize
-
-        if contentRatio > videoRatio {
-            adjustedContentSize = CGSize(width: contentSize.height * videoRatio, height: contentSize.height)
-        } else {
-            adjustedContentSize = CGSize(width: contentSize.width, height: contentSize.width / videoRatio)
-        }
-
-        guard abs(adjustedContentSize.width - contentSize.width) > 1
-            || abs(adjustedContentSize.height - contentSize.height) > 1
-        else {
-            return
-        }
-
-        let currentFrame = window.frame
-        let frameSize = window.frameRect(forContentRect: CGRect(origin: .zero, size: adjustedContentSize)).size
-        let origin = CGPoint(
-            x: currentFrame.midX - frameSize.width / 2,
-            y: currentFrame.midY - frameSize.height / 2
-        )
-        window.setFrame(CGRect(origin: origin, size: frameSize), display: true, animate: true)
+    private func cancelAutoHideChrome() {
+        cancelHoverHideTask()
+        revealTransientChromeIfNeeded()
     }
 }
-#endif
 
 #Preview {
     ContentView()
