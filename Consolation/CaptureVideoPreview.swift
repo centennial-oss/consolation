@@ -15,7 +15,7 @@ final class MacPreviewView: NSView {
     override init(frame frameRect: CGRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer = previewLayer
+        layer?.addSublayer(previewLayer)
         previewLayer.videoGravity = .resizeAspect
     }
 
@@ -32,6 +32,7 @@ final class MacPreviewView: NSView {
 
 struct CaptureVideoPreview: NSViewRepresentable {
     let session: AVCaptureSession
+    let isRunning: Bool
 
     func makeNSView(context: Context) -> MacPreviewView {
         let view = MacPreviewView(frame: .zero)
@@ -42,6 +43,17 @@ struct CaptureVideoPreview: NSViewRepresentable {
     func updateNSView(_ nsView: MacPreviewView, context: Context) {
         if nsView.previewLayer.session !== session {
             nsView.previewLayer.session = session
+        }
+        
+        // Force the layer to recalculate its internal projection matrix when the video starts.
+        // AVCaptureVideoPreviewLayer has a known bug where it fails to naturally rescale
+        // incoming video feeds to fill the view if the inputs attach while the view was statically sized.
+        if isRunning {
+            DispatchQueue.main.async {
+                let rect = nsView.bounds
+                nsView.previewLayer.frame = .zero
+                nsView.previewLayer.frame = rect
+            }
         }
     }
 }
@@ -76,6 +88,7 @@ final class IOSPreviewView: UIView {
 
 struct CaptureVideoPreview: UIViewRepresentable {
     let session: AVCaptureSession
+    let isRunning: Bool
 
     func makeUIView(context: Context) -> IOSPreviewView {
         let view = IOSPreviewView(frame: .zero)
@@ -86,6 +99,14 @@ struct CaptureVideoPreview: UIViewRepresentable {
     func updateUIView(_ uiView: IOSPreviewView, context: Context) {
         if uiView.previewLayer.session !== session {
             uiView.previewLayer.session = session
+        }
+        
+        if isRunning {
+            DispatchQueue.main.async {
+                let rect = uiView.bounds
+                uiView.previewLayer.frame = .zero
+                uiView.previewLayer.frame = rect
+            }
         }
     }
 }

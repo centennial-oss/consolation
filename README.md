@@ -1,4 +1,4 @@
-# Consolation [<img align="right" src="assets/download-app-store.svg" alt="Download on the App Store" />](https://apps.apple.com/app/consolation-coming-soon)
+# Consolation
 
 A no-frills video capture viewer for macOS, iPadOS, and iOS.
 
@@ -22,12 +22,6 @@ The app is intentionally simple: watch the live feed in a window or full screen.
 ## Screenshots
 
 Coming soon.
-
-<!--
-<img src="assets/screenshot-viewer.png" alt="Consolation live viewer" width="875" />
-
-<img src="assets/screenshot-device-picker.png" alt="Consolation device picker" width="875" />
--->
 
 ## Privacy
 
