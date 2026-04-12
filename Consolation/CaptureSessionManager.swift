@@ -218,7 +218,8 @@ final class CaptureSessionManager: ObservableObject {
     @Published private(set) var isExternalCaptureDeviceConnected = false
 
     /// Live audio from the capture card is audible when `false`.
-    @Published private(set) var isAudioMuted = false
+    /// Persisted across launches; see `CaptureAudioUserDefaults`.
+    @Published private(set) var isAudioMuted: Bool
 
     /// Published dimensions of the currently active video feed to inform UI aspect ratio logic natively.
     @Published private(set) var videoSize: CGSize?
@@ -235,6 +236,8 @@ final class CaptureSessionManager: ObservableObject {
 
     /// Pass `nil` to load the built-in default today, and later persisted values.
     init(formatPreferences: CaptureVideoFormatPreferences? = nil) {
+        CaptureAudioUserDefaults.registerDefaults()
+        isAudioMuted = CaptureAudioUserDefaults.loadIsMuted()
         self.formatPreferences = formatPreferences ?? CaptureVideoFormatPreferences.loadFromStorage()
         beginObservingExternalCapturePresence()
     }
@@ -307,7 +310,9 @@ final class CaptureSessionManager: ObservableObject {
             let name = try await backend.startWatching(with: session, formatPreferences: prefs)
             state = .running
             statusMessage = name
-            isAudioMuted = false
+            let muted = CaptureAudioUserDefaults.loadIsMuted()
+            isAudioMuted = muted
+            await backend.setAudioMuted(muted)
             videoSize = await backend.activeVideoSize
         } catch let error as CaptureSessionError {
             switch error {
@@ -329,13 +334,14 @@ final class CaptureSessionManager: ObservableObject {
             await backend.stopWatching(with: session)
             self.state = .idle
             self.statusMessage = nil
-            self.isAudioMuted = false
+            self.isAudioMuted = CaptureAudioUserDefaults.loadIsMuted()
             self.videoSize = nil
         }
     }
 
     func setAudioMuted(_ muted: Bool) {
         isAudioMuted = muted
+        CaptureAudioUserDefaults.saveIsMuted(muted)
         Task {
             await backend.setAudioMuted(muted)
         }
