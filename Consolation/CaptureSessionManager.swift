@@ -7,33 +7,6 @@
 import Combine
 import Foundation
 
-// MARK: - USB UVC capture device identification
-
-/// Returns `true` only for a USB video capture device (e.g. Elgato Game Capture HD60 X).
-///
-/// Three conditions must all be true:
-///   1. `deviceType` is `.external` (or the legacy `.externalUnknown` for older hardware).
-///   2. `isContinuityCamera` is `false` — excludes iPhones/iPads surfacing as `.external`.
-///   3. The device name does not contain the word "camera" — real capture cards are named things
-///      like "Game Capture HD60 X" or "Cam Link 4K", never "FaceTime HD Camera" / "Gold Pro Camera".
-nonisolated fileprivate func deviceIsUSBVideoCapture(_ device: AVCaptureDevice) -> Bool {
-    #if os(macOS)
-    let externalUnknown = AVCaptureDevice.DeviceType.externalUnknown
-    let isExternalType = device.deviceType == .external || device.deviceType == externalUnknown
-    #else
-    let isExternalType = device.deviceType == .external
-    #endif
-    guard isExternalType else { return false }
-
-    if #available(macOS 13.0, iOS 16.0, macCatalyst 16.0, *) {
-        if device.isContinuityCamera { return false }
-    }
-
-    if device.localizedName.localizedCaseInsensitiveContains("camera") { return false }
-
-    return true
-}
-
 /// Serializes `AVCaptureSession` configuration and `startRunning` / `stopRunning`.
 private actor CaptureSessionBackend {
     private var videoInput: AVCaptureDeviceInput?
@@ -41,88 +14,29 @@ private actor CaptureSessionBackend {
     private var audioDataOutput: AVCaptureAudioDataOutput?
     private var audioPlayback: CaptureAudioPlayback?
 
-    func startWatching(with session: AVCaptureSession, formatPreferences: CaptureVideoFormatPreferences) throws -> String {
+    func startWatching(
+        with session: AVCaptureSession,
+        formatPreferences: CaptureVideoFormatPreferences
+    ) throws -> String {
         session.beginConfiguration()
 
-        tearDownAudio(session: session)
-        if let existing = videoInput {
-            session.removeInput(existing)
-            videoInput = nil
-        }
+        tearDownSessionInputs(session: session)
 
         guard let device = Self.pickPreferredVideoDevice() else {
             session.commitConfiguration()
             throw CaptureSessionError.noVideoDevice
         }
 
-        let input: AVCaptureDeviceInput
         do {
-            input = try AVCaptureDeviceInput(device: device)
+            let input = try addVideoInput(for: device, to: session)
+            try configureVideoDevice(device, input: input, session: session, formatPreferences: formatPreferences)
         } catch {
             session.commitConfiguration()
             throw error
         }
 
-        guard session.canAddInput(input) else {
-            session.commitConfiguration()
-            throw CaptureSessionError.cannotAddVideoInput
-        }
-
-        session.addInput(input)
-        videoInput = input
-
-        do {
-            try device.lockForConfiguration()
-            defer { device.unlockForConfiguration() }
-            try CaptureFormatSelector.applyPreferredFormat(device: device, preferences: formatPreferences)
-        } catch {
-            session.removeInput(input)
-            videoInput = nil
-            session.commitConfiguration()
-            throw error
-        }
-
-        if let audioDevice = CaptureAudioDeviceSelection.pickPreferredAudioDevice(matchingVideoDevice: device),
-           let aInput = try? AVCaptureDeviceInput(device: audioDevice),
-           session.canAddInput(aInput) {
-            session.addInput(aInput)
-            audioInput = aInput
-            let output = AVCaptureAudioDataOutput()
-            // Request standard 32-bit float non-interleaved PCM. This prevents AVAudioEngine
-            // from garbling integer/interleaved capture formats (the "wind blowing" effect) and
-            // avoids 'FormatNotSupported' by ensuring the mixer is fed Standard Float32.
-            #if os(macOS)
-            output.audioSettings = [
-                AVFormatIDKey: kAudioFormatLinearPCM,
-                AVLinearPCMIsFloatKey: true,
-                AVLinearPCMIsNonInterleaved: true,
-                AVLinearPCMBitDepthKey: 32
-            ]
-            #endif
-            
-            let playback = CaptureAudioPlayback()
-            if (try? playback.prepareSessionRouting()) != nil {
-                output.setSampleBufferDelegate(playback, queue: playback.workQueue)
-                if session.canAddOutput(output) {
-                    session.addOutput(output)
-                    audioDataOutput = output
-                    audioPlayback = playback
-                } else {
-                    session.removeInput(aInput)
-                    audioInput = nil
-                }
-            } else {
-                session.removeInput(aInput)
-                audioInput = nil
-            }
-        }
-
-        #if os(iOS)
-        if session.canSetSessionPreset(.inputPriority) {
-            session.sessionPreset = .inputPriority
-        }
-        #elseif os(macOS)
-        #endif
+        addAudioInput(matchingVideoDevice: device, to: session)
+        setPreferredSessionPresetIfAvailable(session)
 
         session.commitConfiguration()
         session.startRunning()
@@ -161,6 +75,103 @@ private actor CaptureSessionBackend {
         audioPlayback = nil
     }
 
+    private func tearDownSessionInputs(session: AVCaptureSession) {
+        tearDownAudio(session: session)
+        if let existing = videoInput {
+            session.removeInput(existing)
+            videoInput = nil
+        }
+    }
+
+    private func addVideoInput(
+        for device: AVCaptureDevice,
+        to session: AVCaptureSession
+    ) throws -> AVCaptureDeviceInput {
+        let input = try AVCaptureDeviceInput(device: device)
+
+        guard session.canAddInput(input) else {
+            throw CaptureSessionError.cannotAddVideoInput
+        }
+
+        session.addInput(input)
+        videoInput = input
+        return input
+    }
+
+    private func configureVideoDevice(
+        _ device: AVCaptureDevice,
+        input: AVCaptureDeviceInput,
+        session: AVCaptureSession,
+        formatPreferences: CaptureVideoFormatPreferences
+    ) throws {
+        do {
+            try device.lockForConfiguration()
+            defer { device.unlockForConfiguration() }
+            try CaptureFormatSelector.applyPreferredFormat(device: device, preferences: formatPreferences)
+        } catch {
+            session.removeInput(input)
+            videoInput = nil
+            throw error
+        }
+    }
+
+    private func addAudioInput(matchingVideoDevice device: AVCaptureDevice, to session: AVCaptureSession) {
+        guard let audioDevice = CaptureAudioDeviceSelection.pickPreferredAudioDevice(matchingVideoDevice: device),
+              let input = try? AVCaptureDeviceInput(device: audioDevice),
+              session.canAddInput(input)
+        else {
+            return
+        }
+
+        session.addInput(input)
+        audioInput = input
+        attachAudioOutput(for: input, to: session)
+    }
+
+    private func attachAudioOutput(for input: AVCaptureDeviceInput, to session: AVCaptureSession) {
+        let output = AVCaptureAudioDataOutput()
+        configureAudioOutput(output)
+
+        let playback = CaptureAudioPlayback()
+        guard (try? playback.prepareSessionRouting()) != nil else {
+            session.removeInput(input)
+            audioInput = nil
+            return
+        }
+
+        output.setSampleBufferDelegate(playback, queue: playback.workQueue)
+        guard session.canAddOutput(output) else {
+            session.removeInput(input)
+            audioInput = nil
+            return
+        }
+
+        session.addOutput(output)
+        audioDataOutput = output
+        audioPlayback = playback
+    }
+
+    private func configureAudioOutput(_ output: AVCaptureAudioDataOutput) {
+        // Request standard 32-bit float non-interleaved PCM to avoid garbled integer/interleaved formats.
+        #if os(macOS)
+        output.audioSettings = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsNonInterleaved: true,
+            AVLinearPCMBitDepthKey: 32
+        ]
+        #endif
+    }
+
+    private func setPreferredSessionPresetIfAvailable(_ session: AVCaptureSession) {
+        #if os(iOS)
+        if session.canSetSessionPreset(.inputPriority) {
+            session.sessionPreset = .inputPriority
+        }
+        #elseif os(macOS)
+        #endif
+    }
+
     /// Returns the first USB UVC capture device found, or `nil` when none is connected.
     private static func pickPreferredVideoDevice() -> AVCaptureDevice? {
         #if os(macOS)
@@ -191,21 +202,7 @@ private actor CaptureSessionBackend {
     }
 }
 
-private enum CaptureSessionError: LocalizedError {
-    case noVideoDevice
-    case cannotAddVideoInput
-
-    var errorDescription: String? {
-        switch self {
-        case .noVideoDevice:
-            return "No video capture device was found."
-        case .cannotAddVideoInput:
-            return "This capture device cannot be used as a video input."
-        }
-    }
-}
-
-/// Owns the shared `AVCaptureSession` for preview layers, delegates start/stop to `CaptureSessionBackend`, and publishes UI state on the main actor.
+/// Owns the shared `AVCaptureSession` for preview layers and publishes UI state on the main actor.
 @MainActor
 final class CaptureSessionManager: ObservableObject {
     @Published private(set) var state: CaptureState = .idle
@@ -225,10 +222,11 @@ final class CaptureSessionManager: ObservableObject {
     private let backend = CaptureSessionBackend()
     private var externalDeviceCancellables = Set<AnyCancellable>()
 
-    /// Resolved before each `startWatching`; replace assignment from settings / `UserDefaults` when the preferences UI exists.
+    /// Resolved before each `startWatching`.
+    /// Replace assignment from settings / `UserDefaults` when the preferences UI exists.
     var formatPreferences: CaptureVideoFormatPreferences = .loadFromStorage()
 
-    /// Pass `nil` to load from `CaptureVideoFormatPreferences.loadFromStorage()` (today: built-in default; later: persisted values).
+    /// Pass `nil` to load the built-in default today, and later persisted values.
     init(formatPreferences: CaptureVideoFormatPreferences? = nil) {
         self.formatPreferences = formatPreferences ?? CaptureVideoFormatPreferences.loadFromStorage()
         beginObservingExternalCapturePresence()

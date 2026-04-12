@@ -14,7 +14,7 @@ lint:
 		echo "SwiftLint not found. Install with: brew install swiftlint" >&2; \
 		exit 1; \
 	fi
-	@"$(SWIFTLINT)" lint --strict
+	@"$(SWIFTLINT)" lint --strict $(FIX_PATHS)
 
 # Autocorrect only low-risk rules (whitespace / file hygiene). Still review `git diff` and run tests.
 # Optional: pass paths, e.g. `make lint-fix-safe FIX_PATHS="Consolation/ContentView.swift"`

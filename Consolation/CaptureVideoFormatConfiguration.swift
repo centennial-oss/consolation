@@ -12,7 +12,8 @@ import Foundation
 
 // MARK: - Preferences (future UserDefaults / settings)
 
-/// Goals for automatic video format selection. Replace `defaultForLaunch` sourcing with persisted values when settings UI ships.
+/// Goals for automatic video format selection.
+/// Replace `defaultForLaunch` sourcing with persisted values when settings UI ships.
 struct CaptureVideoFormatPreferences: Sendable, Equatable {
     /// Target width in landscape orientation (e.g. 1920 for “1080p”).
     var preferredWidth: Int32
@@ -22,7 +23,7 @@ struct CaptureVideoFormatPreferences: Sendable, Equatable {
     var preferredMaxFrameRate: Double
 
     /// Built-in default until a settings store provides overrides.
-    static let defaultForLaunch = CaptureVideoFormatPreferences(
+    nonisolated static let defaultForLaunch = CaptureVideoFormatPreferences(
         preferredWidth: 1920,
         preferredHeight: 1080,
         preferredMaxFrameRate: 60
@@ -38,7 +39,7 @@ struct CaptureVideoFormatPreferences: Sendable, Equatable {
 // MARK: - Selection + apply
 
 enum CaptureFormatSelector: Sendable {
-    /// Chooses a format, assigns `device.activeFormat`, and locks min/max frame duration to the best rate ≤ `preferences.preferredMaxFrameRate`.
+    /// Chooses a format and locks min/max frame duration to the best rate ≤ `preferences.preferredMaxFrameRate`.
     /// Caller must not hold the session configuration lock across `startRunning` (handled by caller).
     nonisolated static func applyPreferredFormat(
         device: AVCaptureDevice,
@@ -54,7 +55,9 @@ enum CaptureFormatSelector: Sendable {
         let maxAvailable = format.videoSupportedFrameRateRanges.map(\.maxFrameRate).max() ?? 0
         let desiredFPS = min(targetFPS, maxAvailable)
 
-        guard let range = format.videoSupportedFrameRateRanges.first(where: { $0.minFrameRate <= desiredFPS && $0.maxFrameRate >= desiredFPS })
+        guard let range = format.videoSupportedFrameRateRanges.first(where: {
+            $0.minFrameRate <= desiredFPS && $0.maxFrameRate >= desiredFPS
+        })
             ?? format.videoSupportedFrameRateRanges.max(by: { $0.maxFrameRate < $1.maxFrameRate })
         else {
             return
@@ -84,12 +87,12 @@ enum CaptureFormatSelector: Sendable {
 
         let scored = device.formats.compactMap { format -> (format: AVCaptureDevice.Format, score: Int)? in
             let dims = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
-            let lw = max(dims.width, dims.height)
-            let lh = min(dims.width, dims.height)
+            let landscapeWidth = max(dims.width, dims.height)
+            let landscapeHeight = min(dims.width, dims.height)
             let maxFps = format.videoSupportedFrameRateRanges.map(\.maxFrameRate).max() ?? 0
             let supportsTarget = format.supports(frameRate: min(targetFPS, maxFps))
-            let matchesTargetSize = lw == targetW && lh == targetH
-            let pixels = Int(lw) * Int(lh)
+            let matchesTargetSize = landscapeWidth == targetW && landscapeHeight == targetH
+            let pixels = Int(landscapeWidth) * Int(landscapeHeight)
 
             // Tiered score: exact size + target FPS > exact size + high FPS > supports target FPS > pixels * fps
             var score = 0
@@ -98,7 +101,9 @@ enum CaptureFormatSelector: Sendable {
             } else if matchesTargetSize {
                 score = 3_000_000_000 + Int(maxFps * 1_000) + pixels / 10_000
             } else if supportsTarget {
-                let sizeCloseness = 2_000_000_000 - abs(Int(lw) - Int(targetW)) * 1_000 - abs(Int(lh) - Int(targetH)) * 1_000
+                let widthDistance = abs(Int(landscapeWidth) - Int(targetW)) * 1_000
+                let heightDistance = abs(Int(landscapeHeight) - Int(targetH)) * 1_000
+                let sizeCloseness = 2_000_000_000 - widthDistance - heightDistance
                 score = sizeCloseness + Int(maxFps)
             } else {
                 score = pixels + Int(maxFps * 10)

@@ -11,7 +11,7 @@ import AppKit
 
 struct WindowAccessor: NSViewRepresentable {
     @Binding var window: NSWindow?
-    
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
@@ -30,7 +30,7 @@ struct ContentView: View {
     @State private var window: NSWindow?
     #endif
     @State private var isUIHidden = false
-    @State private var hoverTask: Task<Void, Never>? = nil
+    @State private var hoverTask: Task<Void, Never>?
 
     #if DEBUG
     @State private var showDeviceDebug = false
@@ -40,19 +40,19 @@ struct ContentView: View {
         ZStack {
             Color.black
                 .ignoresSafeArea()
-                
+
             CaptureVideoPreview(session: capture.session, isRunning: capture.state == .running)
                 .ignoresSafeArea()
-            
+
             if !isUIHidden {
                 VStack {
                     Spacer()
-                    
+
                     if statusRequiresInteraction {
                         VStack(spacing: 16) {
                             statusText
-                            
-                            if capture.state == .ready || capture.state == .idle || capture.isExternalCaptureDeviceConnected {
+
+                            if canStartWatching {
                                 Button("Start Watching") {
                                     Task { await capture.startWatching() }
                                 }
@@ -69,9 +69,9 @@ struct ContentView: View {
                         }
                         .shadow(radius: 10)
                     }
-                    
+
                     Spacer()
-                    
+
                     if capture.state == .running {
                         HStack(spacing: 16) {
                             Toggle(isOn: Binding(
@@ -183,17 +183,21 @@ struct ContentView: View {
                 .multilineTextAlignment(.center)
         }
     }
-    
+
     private var statusRequiresInteraction: Bool {
         switch capture.state {
         case .running: return false
         default: return true
         }
     }
-    
+
+    private var canStartWatching: Bool {
+        capture.state == .ready || capture.state == .idle || capture.isExternalCaptureDeviceConnected
+    }
+
     private func resetHoverTimer() {
         hoverTask?.cancel()
-        
+
         if isUIHidden {
             withAnimation(.easeInOut(duration: 0.3)) {
                 isUIHidden = false
@@ -202,7 +206,7 @@ struct ContentView: View {
             window?.standardWindowButton(.closeButton)?.superview?.animator().alphaValue = 1.0
             #endif
         }
-        
+
         hoverTask = Task {
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             guard !Task.isCancelled else { return }

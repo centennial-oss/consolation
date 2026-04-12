@@ -21,8 +21,8 @@ enum CaptureState: Equatable, Sendable {
             (.ready, .ready),
             (.running, .running):
             return true
-        case let (.failed(a), .failed(b)):
-            return a == b
+        case let (.failed(lhsMessage), .failed(rhsMessage)):
+            return lhsMessage == rhsMessage
         default:
             return false
         }

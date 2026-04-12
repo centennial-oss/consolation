@@ -44,7 +44,7 @@ struct CaptureVideoPreview: NSViewRepresentable {
         if nsView.previewLayer.session !== session {
             nsView.previewLayer.session = session
         }
-        
+
         // Force the layer to recalculate its internal projection matrix when the video starts.
         // AVCaptureVideoPreviewLayer has a known bug where it fails to naturally rescale
         // incoming video feeds to fill the view if the inputs attach while the view was statically sized.
@@ -62,12 +62,15 @@ struct CaptureVideoPreview: NSViewRepresentable {
 import UIKit
 
 final class IOSPreviewView: UIView {
-    override class var layerClass: AnyClass {
+    override static var layerClass: AnyClass {
         AVCaptureVideoPreviewLayer.self
     }
 
     var previewLayer: AVCaptureVideoPreviewLayer {
-        layer as! AVCaptureVideoPreviewLayer
+        guard let previewLayer = layer as? AVCaptureVideoPreviewLayer else {
+            fatalError("IOSPreviewView must be backed by AVCaptureVideoPreviewLayer")
+        }
+        return previewLayer
     }
 
     override init(frame: CGRect) {
@@ -100,7 +103,7 @@ struct CaptureVideoPreview: UIViewRepresentable {
         if uiView.previewLayer.session !== session {
             uiView.previewLayer.session = session
         }
-        
+
         if isRunning {
             DispatchQueue.main.async {
                 let rect = uiView.bounds

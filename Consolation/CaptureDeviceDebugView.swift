@@ -42,8 +42,8 @@ struct CaptureDeviceSnapshot: Identifiable {
         )
     }
 
-    private static func typeName(_ t: AVCaptureDevice.DeviceType) -> String {
-        switch t {
+    private static func typeName(_ deviceType: AVCaptureDevice.DeviceType) -> String {
+        switch deviceType {
         case .external:                return ".external"
         case .builtInWideAngleCamera:  return ".builtInWideAngleCamera"
         case .continuityCamera:        return ".continuityCamera"
@@ -52,16 +52,16 @@ struct CaptureDeviceSnapshot: Identifiable {
         case .deskViewCamera:          return ".deskViewCamera"
         case .externalUnknown:         return ".externalUnknown (deprecated)"
         #endif
-        default:                       return t.rawValue
+        default:                       return deviceType.rawValue
         }
     }
 
-    private static func positionName(_ p: AVCaptureDevice.Position) -> String {
-        switch p {
+    private static func positionName(_ position: AVCaptureDevice.Position) -> String {
+        switch position {
         case .front:       return ".front"
         case .back:        return ".back"
         case .unspecified: return ".unspecified"
-        @unknown default:  return "unknown(\(p.rawValue))"
+        @unknown default:  return "unknown(\(position.rawValue))"
         }
     }
 }
@@ -72,7 +72,7 @@ private func allVideoDeviceSnapshots() -> [CaptureDeviceSnapshot] {
     var types: [AVCaptureDevice.DeviceType] = [
         .external,
         .builtInWideAngleCamera,
-        .continuityCamera,
+        .continuityCamera
     ]
     #if os(macOS)
     types.append(.deskViewCamera)
@@ -144,12 +144,12 @@ struct CaptureDeviceDebugView: View {
             Text(snap.name)
                 .font(.system(.body, design: .monospaced).bold())
             Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 2) {
-                row("deviceType",    snap.deviceType)
-                row("modelID",       snap.modelID)
-                row("manufacturer",  snap.manufacturer)
-                row("position",      snap.position)
-                row("isContinuity",  snap.isContinuity)
-                row("uniqueID",      String(snap.id.prefix(24)) + "…")
+                row("deviceType", snap.deviceType)
+                row("modelID", snap.modelID)
+                row("manufacturer", snap.manufacturer)
+                row("position", snap.position)
+                row("isContinuity", snap.isContinuity)
+                row("uniqueID", String(snap.id.prefix(24)) + "…")
             }
             .font(.system(.caption, design: .monospaced))
         }
