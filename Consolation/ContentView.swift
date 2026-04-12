@@ -9,6 +9,9 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var capture = CaptureSessionManager()
+    #if DEBUG
+    @State private var showDeviceDebug = false
+    #endif
 
     var body: some View {
         VStack(spacing: 12) {
@@ -25,35 +28,71 @@ struct ContentView: View {
 
             statusText
 
-            HStack(spacing: 16) {
-                switch capture.state {
-                case .running:
-                    Button("Stop Watching", role: .none) {
-                        capture.stopWatching()
+            if capture.state == .running || capture.isExternalCaptureDeviceConnected {
+                HStack(spacing: 16) {
+                    switch capture.state {
+                    case .running:
+                        Toggle(isOn: Binding(
+                            get: { capture.isAudioMuted },
+                            set: { capture.setAudioMuted($0) }
+                        )) {
+                            Text("Mute audio")
+                        }
+                        .toggleStyle(.switch)
+
+                        Button("Stop Watching", role: .none) {
+                            capture.stopWatching()
+                        }
+                        .keyboardShortcut(.cancelAction)
+                    default:
+                        Button("Start Watching") {
+                            Task { await capture.startWatching() }
+                        }
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(capture.state == .requestingPermission)
                     }
-                    .keyboardShortcut(.cancelAction)
-                default:
-                    Button("Start Watching") {
-                        Task { await capture.startWatching() }
-                    }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(capture.state == .requestingPermission)
                 }
+                .buttonStyle(.borderedProminent)
             }
-            .buttonStyle(.borderedProminent)
         }
         .padding()
         .frame(minWidth: 480, minHeight: 360)
+        .background {
+            Button("") {
+                if capture.state == .running {
+                    capture.setAudioMuted(!capture.isAudioMuted)
+                }
+            }
+            .keyboardShortcut("m", modifiers: [])
+            .hidden()
+        }
+        #if DEBUG
+        .sheet(isPresented: $showDeviceDebug) {
+            CaptureDeviceDebugView()
+        }
+        .background {
+            Button("") { showDeviceDebug = true }
+                .keyboardShortcut("d", modifiers: [.command, .shift])
+                .hidden()
+        }
+        #endif
     }
 
     @ViewBuilder
     private var statusText: some View {
         switch capture.state {
         case .idle:
-            Text("Connect a capture card, then start watching.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            if capture.isExternalCaptureDeviceConnected {
+                Text("Press Start Watching to view your capture device.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            } else {
+                Text("Connect a USB video capture device. Consolation will detect it automatically.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
         case .requestingPermission:
             Text("Requesting camera access…")
                 .font(.callout)

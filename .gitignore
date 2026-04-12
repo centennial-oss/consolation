@@ -1,2 +1,17 @@
-localdata/*
+# Build output
+dist/
+build/
+
+# macOS
+.DS_Store
+
+# Xcode
+xcuserdata/
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+
+# local data
+localdata/
+
 TODO.md
