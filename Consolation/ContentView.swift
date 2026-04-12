@@ -17,10 +17,14 @@ struct WindowAccessor: NSViewRepresentable {
         DispatchQueue.main.async {
             self.window = view.window
             view.window?.isMovableByWindowBackground = true
+            view.window?.tabbingMode = .disallowed
         }
         return view
     }
-    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        nsView.window?.tabbingMode = .disallowed
+    }
 }
 #endif
 
