@@ -13,6 +13,7 @@ private actor CaptureSessionBackend {
     private var audioInput: AVCaptureDeviceInput?
     private var audioDataOutput: AVCaptureAudioDataOutput?
     private var audioPlayback: CaptureAudioPlayback?
+    private(set) var activeVideoSize: CGSize?
 
     func startWatching(
         with session: AVCaptureSession,
@@ -54,6 +55,7 @@ private actor CaptureSessionBackend {
             session.removeInput(input)
             videoInput = nil
         }
+        activeVideoSize = nil
         session.commitConfiguration()
     }
 
@@ -113,6 +115,10 @@ private actor CaptureSessionBackend {
             videoInput = nil
             throw error
         }
+
+        let format = device.activeFormat
+        let dims = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+        activeVideoSize = CGSize(width: CGFloat(dims.width), height: CGFloat(dims.height))
     }
 
     private func addAudioInput(matchingVideoDevice device: AVCaptureDevice, to session: AVCaptureSession) {
@@ -210,6 +216,9 @@ final class CaptureSessionManager: ObservableObject {
     /// Live audio from the capture card is audible when `false`.
     @Published private(set) var isAudioMuted = false
 
+    /// Published dimensions of the currently active video feed to inform UI aspect ratio logic natively.
+    @Published private(set) var videoSize: CGSize?
+
     /// Shared with `AVCaptureVideoPreviewLayer`; mutations happen only on `CaptureSessionBackend`.
     nonisolated let session = AVCaptureSession()
 
@@ -295,6 +304,7 @@ final class CaptureSessionManager: ObservableObject {
             state = .running
             statusMessage = name
             isAudioMuted = false
+            videoSize = await backend.activeVideoSize
         } catch let error as CaptureSessionError {
             switch error {
             case .noVideoDevice:
@@ -316,6 +326,7 @@ final class CaptureSessionManager: ObservableObject {
             self.state = .idle
             self.statusMessage = nil
             self.isAudioMuted = false
+            self.videoSize = nil
         }
     }
 

@@ -68,6 +68,7 @@ struct ContentView: View {
                                 .strokeBorder(.quaternary, lineWidth: 1)
                         }
                         .shadow(radius: 10)
+                        .gesture(DragGesture())
                     }
 
                     Spacer()
@@ -96,6 +97,7 @@ struct ContentView: View {
                         }
                         .shadow(radius: 8)
                         .padding(.bottom, 24)
+                        .gesture(DragGesture())
                     }
                 }
                 .transition(.opacity)
@@ -107,6 +109,11 @@ struct ContentView: View {
             WindowAccessor(window: $window)
             #endif
         }
+        .onChange(of: capture.videoSize) { _, size in
+            #if os(macOS)
+            window?.contentAspectRatio = size ?? .zero
+            #endif
+        }
         .onContinuousHover(coordinateSpace: .local) { _ in
             resetHoverTimer()
         }
@@ -115,7 +122,37 @@ struct ContentView: View {
         }
         .onTapGesture(count: 2) {
             #if os(macOS)
-            window?.zoom(nil)
+            guard let window = window else { return }
+            guard let screen = window.screen else {
+                window.zoom(nil)
+                return
+            }
+
+            let visibleFrame = screen.visibleFrame
+            let aspect = capture.videoSize ?? CGSize(width: 16, height: 9)
+            let aspectWidth = aspect.width == 0 ? 16 : aspect.width
+            let aspectHeight = aspect.height == 0 ? 9 : aspect.height
+            let ratio = aspectWidth / aspectHeight
+
+            var targetWidth = visibleFrame.width
+            var targetHeight = targetWidth / ratio
+
+            // Constrain by height if it spills vertically
+            if targetHeight > visibleFrame.height {
+                targetHeight = visibleFrame.height
+                targetWidth = targetHeight * ratio
+            }
+
+            let targetX = visibleFrame.minX + (visibleFrame.width - targetWidth) / 2
+            let targetY = visibleFrame.minY + (visibleFrame.height - targetHeight) / 2
+            let targetRect = NSRect(x: targetX, y: targetY, width: targetWidth, height: targetHeight)
+
+            if abs(window.frame.width - targetWidth) < 10 {
+                // Already maximized; toggle back down native zoom route
+                window.zoom(nil)
+            } else {
+                window.setFrame(targetRect, display: true, animate: true)
+            }
             #endif
         }
         .background {
