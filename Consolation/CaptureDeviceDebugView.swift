@@ -50,7 +50,6 @@ struct CaptureDeviceSnapshot: Identifiable {
         case .microphone:              return ".microphone"
         #if os(macOS)
         case .deskViewCamera:          return ".deskViewCamera"
-        case .externalUnknown:         return ".externalUnknown (deprecated)"
         #endif
         default:                       return deviceType.rawValue
         }
@@ -76,9 +75,6 @@ private func allVideoDeviceSnapshots() -> [CaptureDeviceSnapshot] {
     ]
     #if os(macOS)
     types.append(.deskViewCamera)
-    // Include the deprecated legacy type — older UVC hardware (e.g. Elgato HD60 X) can still
-    // surface under this type even on modern macOS.
-    types.append(.externalUnknown)
     #endif
 
     let session = AVCaptureDevice.DiscoverySession(
@@ -86,7 +82,7 @@ private func allVideoDeviceSnapshots() -> [CaptureDeviceSnapshot] {
         mediaType: .video,
         position: .unspecified
     )
-    // De-duplicate by uniqueID in case a device appears under both .external and .externalUnknown.
+    // De-duplicate by uniqueID in case a device appears through multiple discovery paths.
     var seen = Set<String>()
     return session.devices.compactMap { device in
         guard seen.insert(device.uniqueID).inserted else { return nil }

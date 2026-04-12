@@ -10,13 +10,7 @@ import Foundation
 
 /// Returns `true` only for a USB video capture device, such as Elgato Game Capture HD60 X.
 nonisolated func deviceIsUSBVideoCapture(_ device: AVCaptureDevice) -> Bool {
-    #if os(macOS)
-    let externalUnknown = AVCaptureDevice.DeviceType.externalUnknown
-    let isExternalType = device.deviceType == .external || device.deviceType == externalUnknown
-    #else
-    let isExternalType = device.deviceType == .external
-    #endif
-    guard isExternalType else { return false }
+    guard device.deviceType == .external else { return false }
 
     if #available(macOS 13.0, iOS 16.0, macCatalyst 16.0, *) {
         if device.isContinuityCamera { return false }

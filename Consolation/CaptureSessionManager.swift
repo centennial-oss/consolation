@@ -174,13 +174,7 @@ private actor CaptureSessionBackend {
 
     /// Returns the first USB UVC capture device found, or `nil` when none is connected.
     private static func pickPreferredVideoDevice() -> AVCaptureDevice? {
-        #if os(macOS)
-        // Include the legacy .externalUnknown type: older capture cards (e.g. Elgato HD60 X) still
-        // surface under this type on current macOS even though Apple deprecated it in macOS 14.
-        let types: [AVCaptureDevice.DeviceType] = [.external, .externalUnknown]
-        #else
         let types: [AVCaptureDevice.DeviceType] = [.external]
-        #endif
 
         let discovery = AVCaptureDevice.DiscoverySession(
             deviceTypes: types,
@@ -237,11 +231,7 @@ final class CaptureSessionManager: ObservableObject {
     }
 
     nonisolated static func hasConnectedExternalVideoDevice() -> Bool {
-        #if os(macOS)
-        let types: [AVCaptureDevice.DeviceType] = [.external, .externalUnknown]
-        #else
         let types: [AVCaptureDevice.DeviceType] = [.external]
-        #endif
 
         let discovery = AVCaptureDevice.DiscoverySession(
             deviceTypes: types,

@@ -11,7 +11,9 @@ import AVFAudio
 #endif
 
 /// Plays PCM audio from `AVCaptureAudioDataOutput` through `AVAudioEngine` (no recording, no files).
-final class CaptureAudioPlayback: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate, @unchecked Sendable {
+nonisolated final class CaptureAudioPlayback: NSObject,
+    AVCaptureAudioDataOutputSampleBufferDelegate,
+    @unchecked Sendable {
     /// Queue passed to `AVCaptureAudioDataOutput.setSampleBufferDelegate`; all processing runs here.
     let workQueue = DispatchQueue(label: "org.centennialoss.consolation.audio.capture", qos: .userInitiated)
 
