@@ -17,6 +17,7 @@ final class MacPreviewView: NSView {
         wantsLayer = true
         layer?.addSublayer(previewLayer)
         previewLayer.videoGravity = .resizeAspect
+        previewLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
     }
 
     @available(*, unavailable)
@@ -26,7 +27,11 @@ final class MacPreviewView: NSView {
 
     override func layout() {
         super.layout()
-        previewLayer.frame = bounds
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        previewLayer.bounds = bounds
+        previewLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        CATransaction.commit()
     }
 }
 

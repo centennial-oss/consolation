@@ -135,6 +135,10 @@ private actor CaptureSessionBackend {
     }
 
     private func attachAudioOutput(for input: AVCaptureDeviceInput, to session: AVCaptureSession) {
+        // Keep this low-latency AVAudioEngine path instead of AVCaptureAudioPreviewOutput.
+        // Apple frameworks may log an AudioAnalytics sandbox fault for com.apple.audioanalyticsd;
+        // that private daemon lookup is expected/unavoidable for sandboxed apps and should not be
+        // "fixed" with private entitlements. The preview output path produced noticeable lag.
         let output = AVCaptureAudioDataOutput()
         configureAudioOutput(output)
 

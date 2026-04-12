@@ -103,7 +103,7 @@ struct ContentView: View {
                 .transition(.opacity)
             }
         }
-        .frame(minWidth: 480, minHeight: 360)
+        .frame(minWidth: 480, minHeight: 270)
         .background {
             #if os(macOS)
             WindowAccessor(window: $window)
@@ -111,7 +111,16 @@ struct ContentView: View {
         }
         .onChange(of: capture.videoSize) { _, size in
             #if os(macOS)
-            window?.contentAspectRatio = size ?? .zero
+            updateWindowAspectRatio(for: size)
+            #endif
+        }
+        .onChange(of: capture.state) { _, state in
+            #if os(macOS)
+            if state == .running {
+                updateWindowAspectRatio(for: capture.videoSize)
+            } else {
+                resetWindowAspectRatio()
+            }
             #endif
         }
         .onContinuousHover(coordinateSpace: .local) { _ in
@@ -259,6 +268,63 @@ struct ContentView: View {
         }
     }
 }
+
+#if os(macOS)
+private extension ContentView {
+    func updateWindowAspectRatio(for videoSize: CGSize?) {
+        guard capture.state == .running else {
+            resetWindowAspectRatio()
+            return
+        }
+        guard let window,
+              !window.styleMask.contains(.fullScreen),
+              let videoSize,
+              videoSize.width > 0,
+              videoSize.height > 0
+        else {
+            return
+        }
+
+        window.contentAspectRatio = videoSize
+        resizeWindowContentToMatchVideoAspect(window: window, videoSize: videoSize)
+    }
+
+    func resetWindowAspectRatio() {
+        window?.contentResizeIncrements = NSSize(width: 1, height: 1)
+    }
+
+    func resizeWindowContentToMatchVideoAspect(window: NSWindow, videoSize: CGSize) {
+        guard let contentView = window.contentView else { return }
+
+        let contentSize = contentView.bounds.size
+        guard contentSize.width > 0, contentSize.height > 0 else { return }
+
+        let videoRatio = videoSize.width / videoSize.height
+        let contentRatio = contentSize.width / contentSize.height
+        let adjustedContentSize: CGSize
+
+        if contentRatio > videoRatio {
+            adjustedContentSize = CGSize(width: contentSize.height * videoRatio, height: contentSize.height)
+        } else {
+            adjustedContentSize = CGSize(width: contentSize.width, height: contentSize.width / videoRatio)
+        }
+
+        guard abs(adjustedContentSize.width - contentSize.width) > 1
+            || abs(adjustedContentSize.height - contentSize.height) > 1
+        else {
+            return
+        }
+
+        let currentFrame = window.frame
+        let frameSize = window.frameRect(forContentRect: CGRect(origin: .zero, size: adjustedContentSize)).size
+        let origin = CGPoint(
+            x: currentFrame.midX - frameSize.width / 2,
+            y: currentFrame.midY - frameSize.height / 2
+        )
+        window.setFrame(CGRect(origin: origin, size: frameSize), display: true, animate: true)
+    }
+}
+#endif
 
 #Preview {
     ContentView()
