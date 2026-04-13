@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  Consolation
-//
-//  Created by James Ranson on 4/12/26.
-//
-
 import SwiftUI
 #if os(macOS)
 import AppKit
@@ -18,85 +11,39 @@ struct ContentView: View {
     #endif
     @State private var isUIHidden = false
     @State private var hoverTask: Task<Void, Never>?
+    @State private var playbackControlsOffset = CGSize.zero
+    @State private var playbackControlsSize = CGSize.zero
+    @State private var previewSize = CGSize.zero
+    @State private var isPlaybackControlsDragActive = false
+    @GestureState private var playbackControlsDragOffset = CGSize.zero
 
     #if DEBUG
     @State private var showDeviceDebug = false
     #endif
 
     var body: some View {
-        ZStack {
-            Color.black
-                .ignoresSafeArea()
+        GeometryReader { proxy in
+            ZStack {
+                Color.black
+                    .ignoresSafeArea()
 
-            CaptureVideoPreview(session: capture.session, isRunning: capture.state == .running)
-                .ignoresSafeArea()
-
-            if !isUIHidden {
-                VStack {
-                    Spacer()
-
-                    if statusRequiresInteraction {
-                        VStack(spacing: 16) {
-                            CaptureStatusLine(
-                                state: capture.state,
-                                isExternalCaptureDeviceConnected: capture.isExternalCaptureDeviceConnected,
-                                statusMessage: capture.statusMessage
-                            )
-
-                            if capture.mediaPermissionNotice != .none,
-                               capture.state != .requestingPermission {
-                                CaptureMediaPermissionEducationNotice(notice: capture.mediaPermissionNotice)
-                            }
-
-                            if canStartWatching {
-                                Button("Start Watching") {
-                                    Task { await capture.startWatching() }
-                                }
-                                .keyboardShortcut(.defaultAction)
-                                .buttonStyle(.borderedProminent)
-                                .disabled(capture.state == .requestingPermission)
-                            }
-                        }
-                        .padding()
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(.quaternary, lineWidth: 1)
-                        }
-                        .shadow(radius: 10)
-                        .gesture(DragGesture())
-                    }
-
-                    Spacer()
-
-                    if capture.state == .running {
-                        HStack(spacing: 16) {
-                            Toggle(isOn: Binding(
-                                get: { capture.isAudioMuted },
-                                set: { capture.setAudioMuted($0) }
-                            )) {
-                                Text("Mute audio")
-                            }
-                            .toggleStyle(.switch)
-
-                            Button("Stop Watching", role: .none) {
-                                capture.stopWatching()
-                            }
-                            .buttonStyle(.borderedProminent)
-                        }
-                        .padding()
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(.quaternary, lineWidth: 1)
-                        }
-                        .shadow(radius: 8)
-                        .padding(.bottom, 24)
-                        .gesture(DragGesture())
-                    }
+                CaptureVideoPreview(
+                    session: capture.session,
+                    isRunning: capture.state == .running
+                ) {
+                    #if os(macOS)
+                    zoomWindowToVideoAspectIfPossible()
+                    #endif
                 }
-                .transition(.opacity)
+                    .ignoresSafeArea()
+
+                if !isUIHidden {
+                    viewerChrome
+                        .transition(.opacity)
+                }
             }
+            .onAppear { setPreviewSize(proxy.size) }
+            .onChange(of: proxy.size) { _, size in setPreviewSize(size) }
         }
         .frame(minWidth: 480, minHeight: 270)
         .background {
@@ -109,9 +56,12 @@ struct ContentView: View {
             updateWindowAspectRatio(for: size)
             #endif
         }
-        .onChange(of: capture.state) { _, state in
+        .onChange(of: capture.state) { oldState, state in
             if state != .running {
                 cancelAutoHideChrome()
+            }
+            if oldState != .running, state == .running {
+                loadSavedPlaybackControlsPosition()
             }
             #if os(macOS)
             if state == .running {
@@ -210,19 +160,178 @@ struct ContentView: View {
         #endif
     }
 
-    private var statusRequiresInteraction: Bool {
+}
+
+private extension ContentView {
+    var viewerChrome: some View {
+        VStack {
+            Spacer()
+
+            if statusRequiresInteraction {
+                statusPanel
+            }
+
+            Spacer()
+
+            if capture.state == .running {
+                playbackControls
+            }
+        }
+    }
+
+    var statusPanel: some View {
+        VStack(spacing: 16) {
+            CaptureStatusLine(
+                state: capture.state,
+                isExternalCaptureDeviceConnected: capture.isExternalCaptureDeviceConnected,
+                statusMessage: capture.statusMessage
+            )
+
+            if capture.mediaPermissionNotice != .none,
+               capture.state != .requestingPermission {
+                CaptureMediaPermissionEducationNotice(notice: capture.mediaPermissionNotice)
+            }
+
+            if canStartWatching {
+                Button("Start Watching") {
+                    Task { await capture.startWatching() }
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+                .disabled(capture.state == .requestingPermission)
+            }
+        }
+        .padding()
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(.quaternary, lineWidth: 1)
+        }
+        .shadow(radius: 10)
+    }
+
+    var playbackControls: some View {
+        HStack(spacing: 16) {
+            Toggle(isOn: Binding(
+                get: { capture.isAudioMuted },
+                set: { capture.setAudioMuted($0) }
+            )) {
+                Text("Mute audio")
+            }
+            .toggleStyle(.switch)
+
+            Button("Stop Watching", role: .none) {
+                capture.stopWatching()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(.quaternary, lineWidth: 1)
+        }
+        .shadow(radius: 8)
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { setPlaybackControlsSize(proxy.size) }
+                    .onChange(of: proxy.size) { _, size in setPlaybackControlsSize(size) }
+            }
+        }
+        .padding(.bottom, playbackControlsBottomPadding)
+        .offset(playbackControlsCurrentOffset)
+        .simultaneousGesture(playbackControlsDragGesture)
+    }
+
+    var statusRequiresInteraction: Bool {
         switch capture.state {
         case .running: return false
         default: return true
         }
     }
 
-    private var canStartWatching: Bool {
+    var canStartWatching: Bool {
         capture.state == .ready || capture.state == .idle || capture.isExternalCaptureDeviceConnected
     }
 
+    var playbackControlsCurrentOffset: CGSize {
+        clampedPlaybackControlsOffset(CGSize(
+            width: playbackControlsOffset.width + playbackControlsDragOffset.width,
+            height: playbackControlsOffset.height + playbackControlsDragOffset.height
+        ))
+    }
+
+    var playbackControlsDragGesture: some Gesture {
+        DragGesture(minimumDistance: 4)
+            .updating($playbackControlsDragOffset) { value, state, _ in
+                state = value.translation
+            }
+            .onChanged { _ in
+                guard !isPlaybackControlsDragActive else { return }
+                isPlaybackControlsDragActive = true
+                cancelHoverHideTask()
+                revealTransientChromeIfNeeded()
+            }
+            .onEnded { value in
+                playbackControlsOffset = clampedPlaybackControlsOffset(CGSize(
+                    width: playbackControlsOffset.width + value.translation.width,
+                    height: playbackControlsOffset.height + value.translation.height
+                ))
+                PlaybackControlsUserDefaults.savePosition(playbackControlsOffset)
+                isPlaybackControlsDragActive = false
+                resetHoverTimer()
+            }
+    }
+
+    var playbackControlsBottomPadding: CGFloat { 24 }
+
+    func setPreviewSize(_ size: CGSize) {
+        guard previewSize != size else { return }
+        previewSize = size
+        clampPlaybackControlsToPreview()
+    }
+
+    func setPlaybackControlsSize(_ size: CGSize) {
+        guard playbackControlsSize != size else { return }
+        playbackControlsSize = size
+        clampPlaybackControlsToPreview()
+    }
+
+    func clampPlaybackControlsToPreview() {
+        playbackControlsOffset = clampedPlaybackControlsOffset(playbackControlsOffset)
+    }
+
+    func loadSavedPlaybackControlsPosition() {
+        guard let position = PlaybackControlsUserDefaults.loadPosition() else {
+            playbackControlsOffset = .zero
+            return
+        }
+
+        playbackControlsOffset = clampedPlaybackControlsOffset(position)
+    }
+
+    func clampedPlaybackControlsOffset(_ offset: CGSize) -> CGSize {
+        guard previewSize.width > 0,
+              previewSize.height > 0,
+              playbackControlsSize.width > 0,
+              playbackControlsSize.height > 0
+        else {
+            return offset
+        }
+
+        let horizontalLimit = max(0, (previewSize.width - playbackControlsSize.width) / 2)
+        let maximumY = playbackControlsBottomPadding
+        let minimumY = min(0, playbackControlsSize.height + playbackControlsBottomPadding - previewSize.height)
+
+        return CGSize(
+            width: min(max(offset.width, -horizontalLimit), horizontalLimit),
+            height: min(max(offset.height, minimumY), maximumY)
+        )
+    }
+
     /// **Space** / **K**: stop while running; start when idle (same rules as the Start Watching button).
-    private func handleSpaceOrKPlaybackShortcut() {
+    func handleSpaceOrKPlaybackShortcut() {
         if capture.state == .running {
             capture.stopWatching()
         } else if canStartWatching, capture.state != .requestingPermission {
@@ -231,7 +340,13 @@ struct ContentView: View {
     }
 
     /// Auto-hide overlays and traffic-light dimming only apply while actively watching.
-    private func resetHoverTimer() {
+    func resetHoverTimer() {
+        guard !isPlaybackControlsDragActive else {
+            cancelHoverHideTask()
+            revealTransientChromeIfNeeded()
+            return
+        }
+
         guard capture.state == .running else {
             cancelAutoHideChrome()
             return
@@ -256,12 +371,12 @@ struct ContentView: View {
         }
     }
 
-    private func cancelHoverHideTask() {
+    func cancelHoverHideTask() {
         hoverTask?.cancel()
         hoverTask = nil
     }
 
-    private func revealTransientChromeIfNeeded() {
+    func revealTransientChromeIfNeeded() {
         guard isUIHidden else { return }
         withAnimation(.easeInOut(duration: 0.3)) {
             isUIHidden = false
@@ -271,7 +386,7 @@ struct ContentView: View {
         #endif
     }
 
-    private func cancelAutoHideChrome() {
+    func cancelAutoHideChrome() {
         cancelHoverHideTask()
         revealTransientChromeIfNeeded()
     }

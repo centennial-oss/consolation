@@ -15,7 +15,7 @@ struct WindowAccessor: NSViewRepresentable {
         let view = NSView()
         DispatchQueue.main.async {
             self.window = view.window
-            view.window?.isMovableByWindowBackground = true
+            view.window?.isMovableByWindowBackground = false
             view.window?.tabbingMode = .disallowed
         }
         return view

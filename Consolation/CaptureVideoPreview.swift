@@ -11,6 +11,7 @@ import AppKit
 
 final class MacPreviewView: NSView {
     let previewLayer = AVCaptureVideoPreviewLayer()
+    var onDoubleClick: () -> Void = {}
 
     override init(frame frameRect: CGRect) {
         super.init(frame: frameRect)
@@ -27,21 +28,70 @@ final class MacPreviewView: NSView {
 
     override func layout() {
         super.layout()
+        resizePreviewLayer()
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        resizePreviewLayer()
+    }
+
+    override func setBoundsSize(_ newSize: NSSize) {
+        super.setBoundsSize(newSize)
+        resizePreviewLayer()
+    }
+
+    override func viewWillStartLiveResize() {
+        super.viewWillStartLiveResize()
+        resizePreviewLayer()
+    }
+
+    override func viewDidEndLiveResize() {
+        super.viewDidEndLiveResize()
+        resizePreviewLayer()
+    }
+
+    func resizePreviewLayer() {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        previewLayer.bounds = bounds
-        previewLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        previewLayer.frame = bounds
         CATransaction.commit()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 {
+            onDoubleClick()
+            return
+        }
+
+        guard let window else {
+            super.mouseDown(with: event)
+            return
+        }
+
+        window.performDrag(with: event)
     }
 }
 
 struct CaptureVideoPreview: NSViewRepresentable {
     let session: AVCaptureSession
     let isRunning: Bool
+    let onDoubleClick: () -> Void
+
+    init(
+        session: AVCaptureSession,
+        isRunning: Bool,
+        onDoubleClick: @escaping () -> Void = {}
+    ) {
+        self.session = session
+        self.isRunning = isRunning
+        self.onDoubleClick = onDoubleClick
+    }
 
     func makeNSView(context: Context) -> MacPreviewView {
         let view = MacPreviewView(frame: .zero)
         view.previewLayer.session = session
+        view.onDoubleClick = onDoubleClick
         return view
     }
 
@@ -49,6 +99,7 @@ struct CaptureVideoPreview: NSViewRepresentable {
         if nsView.previewLayer.session !== session {
             nsView.previewLayer.session = session
         }
+        nsView.onDoubleClick = onDoubleClick
 
         // Force the layer to recalculate its internal projection matrix when the video starts.
         // AVCaptureVideoPreviewLayer has a known bug where it fails to naturally rescale
@@ -56,8 +107,11 @@ struct CaptureVideoPreview: NSViewRepresentable {
         if isRunning {
             DispatchQueue.main.async {
                 let rect = nsView.bounds
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
                 nsView.previewLayer.frame = .zero
                 nsView.previewLayer.frame = rect
+                CATransaction.commit()
             }
         }
     }
@@ -97,6 +151,17 @@ final class IOSPreviewView: UIView {
 struct CaptureVideoPreview: UIViewRepresentable {
     let session: AVCaptureSession
     let isRunning: Bool
+    let onDoubleClick: () -> Void
+
+    init(
+        session: AVCaptureSession,
+        isRunning: Bool,
+        onDoubleClick: @escaping () -> Void = {}
+    ) {
+        self.session = session
+        self.isRunning = isRunning
+        self.onDoubleClick = onDoubleClick
+    }
 
     func makeUIView(context: Context) -> IOSPreviewView {
         let view = IOSPreviewView(frame: .zero)

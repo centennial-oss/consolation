@@ -34,7 +34,7 @@ lint-fix-safe:
 clean:
 	rm -rf build dist
 
-build:
+build: lint
 	mkdir -p build
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED_DATA) build CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
 	cp -R "$(DERIVED_DATA)/Build/Products/Debug/$(APP_NAME).app" build/
