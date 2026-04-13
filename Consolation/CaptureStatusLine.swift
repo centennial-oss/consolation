@@ -15,7 +15,7 @@ struct CaptureStatusLine: View {
         switch state {
         case .idle:
             if isExternalCaptureDeviceConnected {
-                Text("Press Start Watching to view your capture device.")
+                Text("Press the play button to view your capture device.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

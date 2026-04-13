@@ -194,11 +194,13 @@ extension ContentView {
             }
 
             if canStartWatching {
-                Button("Start Watching") {
-                    Task { await capture.startWatching() }
-                }
+                PlaybackToolbarIconButton(
+                    systemName: "play.fill",
+                    accessibilityLabel: "Start Watching",
+                    dimension: 72,
+                    action: { Task { await capture.startWatching() } }
+                )
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
                 .disabled(capture.state == .requestingPermission)
             }
         }

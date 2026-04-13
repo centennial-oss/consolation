@@ -81,16 +81,20 @@ extension ContentView {
 
 /// Hover is tracked on the circular container. The SF Symbol does not hit-test, so moving over the
 /// glyph does not steal tracking from the background circle (plain `NSImageView` hover otherwise clears it).
-private struct PlaybackToolbarIconButton: View {
+struct PlaybackToolbarIconButton: View {
     let systemName: String
     let accessibilityLabel: String
     var iconColor: Color = .primary
     /// Hover fill uses `hoverTint.opacity(0.16)` so alpha matches other toolbar icons.
     var hoverTint: Color = Color.accentColor
+    /// Hit target and icon size; glyph uses half this point size (matches 36 → 18 on the playback bar).
+    var dimension: CGFloat = 36
     let action: () -> Void
 
     @Environment(\.isEnabled) private var isEnabled
     @State private var isHovered = false
+
+    private var iconPointSize: CGFloat { dimension * 0.5 }
 
     var body: some View {
         Button(action: action) {
@@ -98,11 +102,11 @@ private struct PlaybackToolbarIconButton: View {
                 Circle()
                     .fill(isHovered && isEnabled ? hoverTint.opacity(0.16) : Color.clear)
                 Image(systemName: systemName)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: iconPointSize, weight: .semibold))
                     .foregroundStyle(iconColor)
                     .allowsHitTesting(false)
             }
-            .frame(width: 36, height: 36)
+            .frame(width: dimension, height: dimension)
             .contentShape(Circle())
             .onHover { isHovered = $0 }
         }
