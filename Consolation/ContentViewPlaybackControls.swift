@@ -22,6 +22,15 @@ extension ContentView {
         #if os(macOS)
         .offset(playbackControlsCurrentOffset)
         .simultaneousGesture(playbackControlsDragGesture)
+        .onHover { isHovering in
+            isPlaybackControlsHoverActive = isHovering
+            if isHovering {
+                cancelHoverHideTask()
+                revealTransientChromeIfNeeded()
+            } else {
+                resetHoverTimer()
+            }
+        }
         #endif
     }
 
@@ -32,28 +41,48 @@ extension ContentView {
                 systemName: "power",
                 accessibilityLabel: "Stop Watching",
                 iconColor: .red,
-                hoverTint: .red,
+                hoverTint: .white,
                 action: { capture.stopWatching() }
             )
 
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 PlaybackToolbarIconButton(
                     systemName: capture.isAudioMuted ? "speaker.slash.fill" : "speaker.fill",
                     accessibilityLabel: capture.isAudioMuted ? "Unmute audio" : "Mute audio",
+                    iconColor: capture.isAudioMuted ? .accentColor : .white,
                     action: { capture.setAudioMuted(!capture.isAudioMuted) }
                 )
+                ZStack {
+                    if !capture.isAudioMuted {
+                        VStack(spacing: 20) {
+                            Color.black.opacity(0.35)
+                        }
+                        .cornerRadius(14)
+                        .allowsHitTesting(false)
+                    }
+                    Slider(
+                        value: Binding(
+                            get: { capture.volumeLevel },
+                            set: { capture.setVolumeLevel($0) }
+                        ),
+                        in: 0...1,
+                        onEditingChanged: handleSliderEditingChanged(_:)
+                    )
+                    .labelsHidden()
+                    .frame(width: 150)
+                    .tint(.white)
+                    .disabled(capture.isAudioMuted)
 
-                Slider(
-                    value: Binding(
-                        get: { capture.volumeLevel },
-                        set: { capture.setVolumeLevel($0) }
-                    ),
-                    in: 0...1
-                )
-                .labelsHidden()
-                .frame(width: 150)
-                .disabled(capture.isAudioMuted)
-                .gesture(playbackControlsInteractionGesture)
+                    if capture.isAudioMuted {
+                        VStack(spacing: 20) {
+                            Color.black.opacity(0.35)
+                        }
+                        .cornerRadius(14)
+                        .allowsHitTesting(false)
+                    }
+                }
+                .frame(width: 170)
+                .frame(maxHeight: 28)
             }
 
             #if os(iOS)
@@ -72,19 +101,18 @@ extension ContentView {
 
             #if os(macOS)
             PlaybackToolbarIconButton(
-                systemName: "arrow.up.left.and.arrow.down.right",
+                systemName: isFullscreenActive ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
                 accessibilityLabel: "Full Screen",
+                iconColor: isFullscreenActive ? .accentColor : .white,
                 action: { window?.toggleFullScreen(nil) }
             )
             #endif
         }
-        .padding()
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(.quaternary, lineWidth: 1)
-        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 42, style: .continuous))
         .shadow(radius: 8)
+        .panelLiquidGlass(cornerRadius: 42)
         .background {
             GeometryReader { proxy in
                 Color.clear
@@ -108,6 +136,19 @@ extension ContentView {
             }
     }
 
+    func handleSliderEditingChanged(_ isEditing: Bool) {
+        if isEditing {
+            guard !isPlaybackControlsInteractionActive else { return }
+            isPlaybackControlsInteractionActive = true
+            cancelHoverHideTask()
+            revealTransientChromeIfNeeded()
+            return
+        }
+
+        isPlaybackControlsInteractionActive = false
+        resetHoverTimer()
+    }
+
     var isIPadClassicAspectFillActive: Bool {
         #if os(iOS)
         isIPad && isClassicAspectFillEnabled
@@ -124,6 +165,12 @@ extension ContentView {
         #endif
     }
 
+    #if os(macOS)
+    var isFullscreenActive: Bool {
+        window?.styleMask.contains(.fullScreen) ?? false
+    }
+    #endif
+
 }
 
 /// Hover is tracked on the circular container. The SF Symbol does not hit-test, so moving over the
@@ -133,9 +180,9 @@ struct PlaybackToolbarIconButton: View {
     let accessibilityLabel: String
     var iconColor: Color = .primary
     /// Hover fill uses `hoverTint.opacity(0.16)` so alpha matches other toolbar icons.
-    var hoverTint: Color = Color.accentColor
+    var hoverTint: Color = Color.white
     /// Hit target and icon size; glyph uses half this point size (matches 36 → 18 on the playback bar).
-    var dimension: CGFloat = 36
+    var dimension: CGFloat = 42
     let action: () -> Void
 
     @Environment(\.isEnabled) private var isEnabled

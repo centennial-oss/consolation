@@ -17,6 +17,7 @@ struct ContentView: View {
     @State var playbackControlsSize = CGSize.zero
     @State var previewSize = CGSize.zero
     @State var isPlaybackControlsInteractionActive = false
+    @State var isPlaybackControlsHoverActive = false
     @GestureState private var playbackControlsDragOffset = CGSize.zero
     #if os(iOS)
     @State var isClassicAspectFillEnabled = false
@@ -181,7 +182,7 @@ struct ContentView: View {
             Button("") { showDeviceDebug = true }
                 .keyboardShortcut("d", modifiers: [.command, .shift])
                 .hidden()
-        }
+        }       
         #endif
     }
 
@@ -236,6 +237,7 @@ extension ContentView {
                 .strokeBorder(.quaternary, lineWidth: 1)
         }
         .shadow(radius: 10)
+        .panelLiquidGlass(cornerRadius: 16)
     }
 
     var statusRequiresInteraction: Bool {
@@ -342,7 +344,7 @@ extension ContentView {
 
     /// Auto-hide overlays and traffic-light dimming only apply while actively watching.
     func resetHoverTimer() {
-        guard !isPlaybackControlsInteractionActive else {
+        guard !isPlaybackControlsInteractionActive, !isPlaybackControlsHoverActive else {
             cancelHoverHideTask()
             revealTransientChromeIfNeeded()
             return
