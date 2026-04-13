@@ -9,41 +9,42 @@ import SwiftUI
 struct CaptureStatusLine: View {
     let state: CaptureState
     let isExternalCaptureDeviceConnected: Bool
+    let externalCaptureDeviceName: String?
     let statusMessage: String?
 
     var body: some View {
         switch state {
         case .idle:
             if isExternalCaptureDeviceConnected {
-                Text("Press the play button to view your capture device.")
+                Text("Press Play to connect to the \(externalCaptureDeviceName ?? "USB Video Capture Device")")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             } else {
-                Text("Connect a USB video capture device. Consolation will detect it automatically.")
+                Text("USB Video Capture Device not detected")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
         case .requestingPermission:
-            Text("Requesting camera access…")
+            Text("Connecting...")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         case .noDevice:
-            Text("No capture device found.")
+            Text("USB Video Capture Device not detected")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         case .ready:
-            Text("Ready.")
+            Text("Ready!")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         case .running:
             if let name = statusMessage {
-                Text("Watching: \(name)")
+                Text("Connected: \(name)")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Watching live input.")
+                Text("Connected")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

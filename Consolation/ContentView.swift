@@ -1,6 +1,8 @@
 import SwiftUI
 #if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
 #endif
 
 struct ContentView: View {
@@ -16,6 +18,9 @@ struct ContentView: View {
     @State var previewSize = CGSize.zero
     @State var isPlaybackControlsInteractionActive = false
     @GestureState private var playbackControlsDragOffset = CGSize.zero
+    #if os(iOS)
+    @State var isClassicAspectFillEnabled = false
+    #endif
 
     #if DEBUG
     @State private var showDeviceDebug = false
@@ -29,7 +34,8 @@ struct ContentView: View {
 
                 CaptureVideoPreview(
                     session: capture.session,
-                    isRunning: capture.state == .running
+                    isRunning: capture.state == .running,
+                    isClassicAspectFillEnabled: isIPadClassicAspectFillActive
                 ) {
                     #if os(macOS)
                     zoomWindowToVideoAspectIfPossible()
@@ -57,11 +63,15 @@ struct ContentView: View {
             #endif
         }
         .onChange(of: capture.state) { oldState, state in
+            PlaybackDisplayWakeLock.setActive(state == .running)
             if state != .running {
                 cancelAutoHideChrome()
             }
             if oldState != .running, state == .running {
+                #if os(macOS)
                 loadSavedPlaybackControlsPosition()
+                #endif
+                resetHoverTimer()
             }
             #if os(macOS)
             if state == .running {
@@ -84,12 +94,26 @@ struct ContentView: View {
             }
         }
         #endif
+        #if os(macOS)
         .onContinuousHover(coordinateSpace: .local) { _ in
             resetHoverTimer()
         }
+        #endif
+        #if os(iOS)
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                guard capture.state == .running else { return }
+                resetHoverTimer()
+            }
+        )
+        #endif
         .onAppear {
+            PlaybackDisplayWakeLock.setActive(false)
             resetHoverTimer()
             capture.refreshMediaCaptureAuthorizationStatuses()
+        }
+        .onDisappear {
+            PlaybackDisplayWakeLock.setActive(false)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
@@ -185,6 +209,7 @@ extension ContentView {
             CaptureStatusLine(
                 state: capture.state,
                 isExternalCaptureDeviceConnected: capture.isExternalCaptureDeviceConnected,
+                externalCaptureDeviceName: capture.externalCaptureDeviceName,
                 statusMessage: capture.statusMessage
             )
 
@@ -221,7 +246,14 @@ extension ContentView {
     }
 
     var canStartWatching: Bool {
-        capture.state == .ready || capture.state == .idle || capture.isExternalCaptureDeviceConnected
+        guard capture.isExternalCaptureDeviceConnected else { return false }
+
+        switch capture.state {
+        case .ready, .idle, .noDevice:
+            return true
+        case .requestingPermission, .running, .failed:
+            return false
+        }
     }
 
     var playbackControlsCurrentOffset: CGSize {

@@ -91,12 +91,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct ConsolationApp: App {
     #if os(macOS)
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    #elseif os(iOS)
+    @UIApplicationDelegateAdaptor(IOSAppOrientationDelegate.self) var iosOrientationDelegate
     #endif
 
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
+        #if os(iOS)
+        .windowResizability(.contentMinSize)
+        #endif
         #if os(macOS)
         .windowStyle(.hiddenTitleBar)
         .commands {

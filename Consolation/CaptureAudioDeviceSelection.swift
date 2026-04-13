@@ -5,6 +5,9 @@
 
 import AVFoundation
 import Foundation
+#if os(iOS)
+@preconcurrency import AVFAudio
+#endif
 
 enum CaptureAudioDeviceSelection {
     /// Names that almost always mean the Mac / headset / Continuity — never use for HDMI capture audio.
@@ -25,22 +28,56 @@ enum CaptureAudioDeviceSelection {
     nonisolated static func pickPreferredAudioDevice(
         matchingVideoDevice videoDevice: AVCaptureDevice
     ) -> AVCaptureDevice? {
+        #if os(iOS)
+        let audioDeviceTypes: [AVCaptureDevice.DeviceType] = [.microphone, .external]
+        #else
+        let audioDeviceTypes: [AVCaptureDevice.DeviceType] = [.microphone]
+        #endif
         let discovery = AVCaptureDevice.DiscoverySession(
-            deviceTypes: [.microphone],
+            deviceTypes: audioDeviceTypes,
             mediaType: .audio,
             position: .unspecified
         )
         let devices = discovery.devices
+        #if os(iOS)
+        let audioSession = AVAudioSession.sharedInstance()
+        do {
+            try audioSession.setCategory(
+                .playAndRecord,
+                mode: .default,
+                options: [.defaultToSpeaker, .mixWithOthers, .allowBluetoothHFP, .allowBluetoothA2DP]
+            )
+            try audioSession.setActive(true)
+            if let externalInput = audioSession.availableInputs?.first(where: { $0.portType != .builtInMic }) {
+                try audioSession.setPreferredInput(externalInput)
+            }
+        } catch {
+            print("Consolation iOS audio session setup failed before device selection: \(error)")
+        }
+        #endif
         guard !devices.isEmpty else { return nil }
 
         let videoName = videoDevice.localizedName
+        if let heuristic = pickHeuristicAudioMatch(devices: devices, videoName: videoName) {
+            return heuristic
+        }
 
-        // 1. Exact name match (Elgato often uses the same string for video + audio endpoints).
+        #if targetEnvironment(simulator)
+        return devices.first
+        #else
+        return nil
+        #endif
+    }
+
+    /// Exact name, substring, and token overlap between video device name and audio endpoints.
+    nonisolated private static func pickHeuristicAudioMatch(
+        devices: [AVCaptureDevice],
+        videoName: String
+    ) -> AVCaptureDevice? {
         if let exact = devices.first(where: { $0.localizedName.caseInsensitiveCompare(videoName) == .orderedSame }) {
             return exact
         }
 
-        // 2. Audio device name contained in video name (e.g. short audio label inside longer video name).
         let candidates = devices.filter { !isLikelyBuiltInOrAmbientMic(name: $0.localizedName) }
         if videoName.count >= 4 {
             if let substringMatch = candidates.first(where: {
@@ -55,7 +92,6 @@ enum CaptureAudioDeviceSelection {
             }
         }
 
-        // 3. Shared product tokens from the video name. Prefer the longest match to avoid generic "HDMI" collisions.
         let tokens = significantTokens(from: videoName)
         var best: (device: AVCaptureDevice, score: Int)?
         for device in candidates {
@@ -69,15 +105,8 @@ enum CaptureAudioDeviceSelection {
                 best = (device, score)
             }
         }
-        if let best { return best.device }
-
-        #if targetEnvironment(simulator)
-        return devices.first
-        #else
-        return nil
-        #endif
+        return best?.device
     }
-
     /// Words / fragments from the video device name useful for matching audio (drops tiny noise words).
     nonisolated private static func significantTokens(from name: String) -> [String] {
         let separators = CharacterSet.alphanumerics.inverted

@@ -9,6 +9,8 @@ import Foundation
 /// Serializes `AVCaptureSession` configuration and `startRunning` / `stopRunning`.
 actor CaptureSessionBackend {
     private var videoInput: AVCaptureDeviceInput?
+    private var videoDataOutput: AVCaptureVideoDataOutput?
+    private var videoFrameRateMonitor: CaptureVideoFrameRateMonitor?
     private var audioInput: AVCaptureDeviceInput?
     private var audioDataOutput: AVCaptureAudioDataOutput?
     private var audioPlayback: CaptureAudioPlayback?
@@ -29,9 +31,12 @@ actor CaptureSessionBackend {
             throw CaptureSessionError.noVideoDevice
         }
 
+        setPreferredSessionPresetIfAvailable(session)
+
         do {
             let input = try addVideoInput(for: device, to: session)
             try configureVideoDevice(device, input: input, session: session, formatPreferences: formatPreferences)
+            addVideoFrameRateMonitor(to: session)
         } catch {
             session.commitConfiguration()
             throw error
@@ -43,10 +48,13 @@ actor CaptureSessionBackend {
             initialAudioMuted: initialAudioMuted,
             initialVolumeLevel: initialVolumeLevel
         )
-        setPreferredSessionPresetIfAvailable(session)
 
         session.commitConfiguration()
         session.startRunning()
+        #if os(macOS)
+        reapplyFormatAfterStart(device: device, preferences: formatPreferences)
+        #endif
+        logActiveVideoFormat(for: device)
         return device.localizedName
     }
 
@@ -57,6 +65,7 @@ actor CaptureSessionBackend {
 
         session.beginConfiguration()
         tearDownAudio(session: session)
+        tearDownVideoFrameRateMonitor(session: session)
         if let input = videoInput {
             session.removeInput(input)
             videoInput = nil
@@ -89,10 +98,20 @@ actor CaptureSessionBackend {
 
     private func tearDownSessionInputs(session: AVCaptureSession) {
         tearDownAudio(session: session)
+        tearDownVideoFrameRateMonitor(session: session)
         if let existing = videoInput {
             session.removeInput(existing)
             videoInput = nil
         }
+    }
+
+    private func tearDownVideoFrameRateMonitor(session: AVCaptureSession) {
+        if let output = videoDataOutput {
+            output.setSampleBufferDelegate(nil, queue: nil)
+            session.removeOutput(output)
+            videoDataOutput = nil
+        }
+        videoFrameRateMonitor = nil
     }
 
     private func addVideoInput(
@@ -131,6 +150,23 @@ actor CaptureSessionBackend {
         activeVideoSize = CGSize(width: CGFloat(dims.width), height: CGFloat(dims.height))
     }
 
+    private func addVideoFrameRateMonitor(to session: AVCaptureSession) {
+        let output = AVCaptureVideoDataOutput()
+        output.alwaysDiscardsLateVideoFrames = true
+
+        let monitor = CaptureVideoFrameRateMonitor()
+        output.setSampleBufferDelegate(monitor, queue: monitor.queue)
+
+        guard session.canAddOutput(output) else {
+            output.setSampleBufferDelegate(nil, queue: nil)
+            return
+        }
+
+        session.addOutput(output)
+        videoDataOutput = output
+        videoFrameRateMonitor = monitor
+    }
+
     private func addAudioInput(
         matchingVideoDevice device: AVCaptureDevice,
         to session: AVCaptureSession,
@@ -160,10 +196,7 @@ actor CaptureSessionBackend {
         initialAudioMuted: Bool,
         initialVolumeLevel: Double
     ) {
-        // Keep this low-latency AVAudioEngine path instead of AVCaptureAudioPreviewOutput.
-        // Apple frameworks may log an AudioAnalytics sandbox fault for com.apple.audioanalyticsd;
-        // that private daemon lookup is expected/unavoidable for sandboxed apps and should not be
-        // "fixed" with private entitlements. The preview output path produced noticeable lag.
+        // Low-latency AVAudioEngine path. (`AVCaptureAudioPreviewOutput` exists on macOS only, not iOS.)
         let output = AVCaptureAudioDataOutput()
         configureAudioOutput(output)
 
@@ -182,6 +215,11 @@ actor CaptureSessionBackend {
         }
 
         session.addOutput(output)
+        #if os(iOS)
+        for connection in output.connections {
+            connection.isEnabled = true
+        }
+        #endif
         audioDataOutput = output
         audioPlayback = playback
         playback.setAudioBeforeCaptureStarts(muted: initialAudioMuted, volumeLevel: initialVolumeLevel)
@@ -189,6 +227,7 @@ actor CaptureSessionBackend {
 
     private func configureAudioOutput(_ output: AVCaptureAudioDataOutput) {
         // Request standard 32-bit float non-interleaved PCM to avoid garbled integer/interleaved formats.
+        // `audioSettings` is macOS-only; iOS always uses the capture device’s native PCM (see `CaptureAudioPlayback`).
         #if os(macOS)
         output.audioSettings = [
             AVFormatIDKey: kAudioFormatLinearPCM,
@@ -199,12 +238,39 @@ actor CaptureSessionBackend {
         #endif
     }
 
+    #if os(macOS)
+    /// macOS's UVC stack resets both the active format and frame duration when the session starts.
+    /// Re-lock the device and re-apply both immediately after `startRunning()`.
+    private func reapplyFormatAfterStart(device: AVCaptureDevice, preferences: CaptureVideoFormatPreferences) {
+        do {
+            try device.lockForConfiguration()
+            defer { device.unlockForConfiguration() }
+            try CaptureFormatSelector.reapplyFormatAndFrameDuration(device: device, preferences: preferences)
+        } catch {
+            print("Consolation macOS video: failed to reapply format after startRunning: \(error)")
+        }
+    }
+    #endif
+
     private func setPreferredSessionPresetIfAvailable(_ session: AVCaptureSession) {
         #if os(iOS)
         if session.canSetSessionPreset(.inputPriority) {
             session.sessionPreset = .inputPriority
         }
-        #elseif os(macOS)
+        #endif
+    }
+
+    private func logActiveVideoFormat(for device: AVCaptureDevice) {
+        #if os(macOS)
+        let minDuration = device.activeVideoMinFrameDuration
+        let maxDuration = device.activeVideoMaxFrameDuration
+        let minFPS = minDuration.seconds > 0 ? 1 / minDuration.seconds : 0
+        let maxFPS = maxDuration.seconds > 0 ? 1 / maxDuration.seconds : 0
+        print(
+            "Consolation macOS video active format: " +
+            "\(CaptureFormatSelector.videoFormatDescription(device.activeFormat)), " +
+            "minFPS=\(minFPS), maxFPS=\(maxFPS)"
+        )
         #endif
     }
 

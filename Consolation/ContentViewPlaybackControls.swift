@@ -7,6 +7,26 @@ import SwiftUI
 
 extension ContentView {
     var playbackControls: some View {
+        Group {
+            #if os(iOS)
+            HStack {
+                Spacer(minLength: 0)
+                playbackControlsBar
+                Spacer(minLength: 0)
+            }
+            #else
+            playbackControlsBar
+            #endif
+        }
+        .padding(.bottom, playbackControlsBottomPadding)
+        #if os(macOS)
+        .offset(playbackControlsCurrentOffset)
+        .simultaneousGesture(playbackControlsDragGesture)
+        #endif
+    }
+
+    /// Shared toolbar contents; macOS may offset/drag the whole bar, iOS keeps it fixed bottom-center.
+    private var playbackControlsBar: some View {
         HStack(spacing: 20) {
             PlaybackToolbarIconButton(
                 systemName: "power",
@@ -36,6 +56,20 @@ extension ContentView {
                 .gesture(playbackControlsInteractionGesture)
             }
 
+            #if os(iOS)
+            if isIPad {
+                PlaybackToolbarTextToggleButton(
+                    title: "4:3",
+                    accessibilityLabel: "Fill screen with 4:3 video",
+                    isOn: isClassicAspectFillEnabled,
+                    action: {
+                        isClassicAspectFillEnabled.toggle()
+                        resetHoverTimer()
+                    }
+                )
+            }
+            #endif
+
             #if os(macOS)
             PlaybackToolbarIconButton(
                 systemName: "arrow.up.left.and.arrow.down.right",
@@ -58,9 +92,6 @@ extension ContentView {
                     .onChange(of: proxy.size) { _, size in setPlaybackControlsSize(size) }
             }
         }
-        .padding(.bottom, playbackControlsBottomPadding)
-        .offset(playbackControlsCurrentOffset)
-        .simultaneousGesture(playbackControlsDragGesture)
     }
 
     var playbackControlsInteractionGesture: some Gesture {
@@ -75,6 +106,22 @@ extension ContentView {
                 isPlaybackControlsInteractionActive = false
                 resetHoverTimer()
             }
+    }
+
+    var isIPadClassicAspectFillActive: Bool {
+        #if os(iOS)
+        isIPad && isClassicAspectFillEnabled
+        #else
+        false
+        #endif
+    }
+
+    var isIPad: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad
+        #else
+        false
+        #endif
     }
 
 }
@@ -112,5 +159,33 @@ struct PlaybackToolbarIconButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
+    }
+}
+
+struct PlaybackToolbarTextToggleButton: View {
+    let title: String
+    let accessibilityLabel: String
+    let isOn: Bool
+    var dimension: CGFloat = 36
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(isOn ? Color.accentColor : Color.white)
+                .frame(width: dimension, height: dimension)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(isOn || isHovered ? Color.accentColor.opacity(0.16) : Color.clear)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .onHover { isHovered = $0 }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(isOn ? "On" : "Off")
     }
 }

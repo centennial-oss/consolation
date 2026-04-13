@@ -18,6 +18,9 @@ final class CaptureSessionManager: ObservableObject {
     /// True when at least one non-Continuity external video device is present (USB capture path).
     @Published private(set) var isExternalCaptureDeviceConnected = false
 
+    /// Localized name of the currently detected USB video capture device, when present.
+    @Published private(set) var externalCaptureDeviceName: String?
+
     /// Live audio from the capture card is audible when `false`.
     /// Persisted across launches; see `CaptureAudioUserDefaults`.
     @Published private(set) var isAudioMuted: Bool
@@ -56,10 +59,15 @@ final class CaptureSessionManager: ObservableObject {
     }
 
     func refreshExternalCapturePresence() {
-        isExternalCaptureDeviceConnected = Self.hasConnectedExternalVideoDevice()
+        externalCaptureDeviceName = Self.connectedExternalVideoDeviceName()
+        isExternalCaptureDeviceConnected = externalCaptureDeviceName != nil
     }
 
     nonisolated static func hasConnectedExternalVideoDevice() -> Bool {
+        connectedExternalVideoDeviceName() != nil
+    }
+
+    nonisolated static func connectedExternalVideoDeviceName() -> String? {
         let types: [AVCaptureDevice.DeviceType] = [.external]
 
         let discovery = AVCaptureDevice.DiscoverySession(
@@ -67,16 +75,18 @@ final class CaptureSessionManager: ObservableObject {
             mediaType: .video,
             position: .unspecified
         )
-        if discovery.devices.contains(where: deviceIsUSBVideoCapture) { return true }
+        if let device = discovery.devices.first(where: deviceIsUSBVideoCapture) {
+            return device.localizedName
+        }
 
         #if targetEnvironment(simulator)
-        return !AVCaptureDevice.DiscoverySession(
+        return AVCaptureDevice.DiscoverySession(
             deviceTypes: [.builtInWideAngleCamera],
             mediaType: .video,
             position: .unspecified
-        ).devices.isEmpty
+        ).devices.first?.localizedName
         #else
-        return false
+        return nil
         #endif
     }
 
@@ -94,10 +104,23 @@ final class CaptureSessionManager: ObservableObject {
         )
         .receive(on: RunLoop.main)
         .sink { [weak self] _ in
-            self?.refreshExternalCapturePresence()
-            self?.refreshMediaCaptureAuthorizationStatuses()
+            self?.handleExternalCapturePresenceChanged()
         }
         .store(in: &externalDeviceCancellables)
+    }
+
+    private func handleExternalCapturePresenceChanged() {
+        refreshExternalCapturePresence()
+        refreshMediaCaptureAuthorizationStatuses()
+
+        if isExternalCaptureDeviceConnected, state == .noDevice {
+            state = .idle
+            statusMessage = nil
+            return
+        }
+
+        guard !isExternalCaptureDeviceConnected, state == .running else { return }
+        stopWatchingAfterDeviceDisconnect()
     }
 
     func startWatching() async {
@@ -158,6 +181,26 @@ final class CaptureSessionManager: ObservableObject {
             await backend.stopWatching(with: session)
             self.state = .idle
             self.statusMessage = nil
+            self.isAudioMuted = CaptureAudioUserDefaults.loadIsMuted()
+            self.volumeLevel = CaptureAudioUserDefaults.loadVolumeLevel()
+            self.videoSize = nil
+            self.refreshMediaCaptureAuthorizationStatuses()
+        }
+    }
+
+    private func stopWatchingAfterDeviceDisconnect() {
+        state = .noDevice
+        statusMessage = "Capture device disconnected."
+        Task { @MainActor in
+            await backend.stopWatching(with: session)
+            self.refreshExternalCapturePresence()
+            if self.isExternalCaptureDeviceConnected {
+                self.state = .idle
+                self.statusMessage = nil
+            } else {
+                self.state = .noDevice
+                self.statusMessage = "Capture device disconnected."
+            }
             self.isAudioMuted = CaptureAudioUserDefaults.loadIsMuted()
             self.volumeLevel = CaptureAudioUserDefaults.loadVolumeLevel()
             self.videoSize = nil

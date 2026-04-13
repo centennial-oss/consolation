@@ -7,7 +7,7 @@ import AVFoundation
 import AudioToolbox
 import Foundation
 #if os(iOS)
-import AVFAudio
+@preconcurrency import AVFAudio
 #endif
 
 /// Plays PCM audio from `AVCaptureAudioDataOutput` through `AVAudioEngine` (no recording, no files).
@@ -21,8 +21,8 @@ nonisolated final class CaptureAudioPlayback: NSObject,
     private static let workQueueMarker = DispatchSpecificKey<UInt8>()
     private static let workQueueTag: UInt8 = 1
 
-    private let engine = AVAudioEngine()
-    private let playerNode = AVAudioPlayerNode()
+    let engine = AVAudioEngine()
+    let playerNode = AVAudioPlayerNode()
 
     private let stateLock = NSLock()
     private var stoppedFlag = false
@@ -34,9 +34,13 @@ nonisolated final class CaptureAudioPlayback: NSObject,
     private let scheduleLock = NSLock()
     private var pendingScheduledBuffers = 0
     /// Keep the player queue short so latency stays low, but large enough to avoid jitter/garble.
-    private let maxPendingScheduledBuffers = 4
+    private let maxPendingScheduledBuffers = 8
 
-    private var didWireEngine = false
+    #if os(iOS)
+    let engineWireLock = NSLock()
+    var wiredIOSPlayFormat: AVAudioFormat?
+    #endif
+    var didWireEngine = false
 
     var isStopped: Bool {
         get {
@@ -59,9 +63,26 @@ nonisolated final class CaptureAudioPlayback: NSObject,
     func prepareSessionRouting() throws {
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()
-        // `.videoChat` enables voice processing that can distort line-level / HDMI capture audio.
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .mixWithOthers])
+        try session.setCategory(
+            .playAndRecord,
+            mode: .default,
+            options: [.defaultToSpeaker, .mixWithOthers, .allowBluetoothHFP, .allowBluetoothA2DP]
+        )
+        try session.setPreferredIOBufferDuration(0.01)
         try session.setActive(true)
+        if let inputs = session.availableInputs {
+            if let externalInput = inputs.first(where: { $0.portType != .builtInMic }) {
+                try session.setPreferredInput(externalInput)
+            }
+        }
+        try session.overrideOutputAudioPort(.speaker)
+        #endif
+    }
+
+    /// Kept for older call sites; routing is configured before capture starts.
+    func tuneIOSAudioOutputAfterCaptureStarts() {
+        #if os(iOS)
+        try? AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
         #endif
     }
 
@@ -121,15 +142,38 @@ nonisolated final class CaptureAudioPlayback: NSObject,
         isStopped = true
         let cleanup: () -> Void = { [weak self] in
             guard let self else { return }
+            #if os(iOS)
+            let detachEngine: () -> Void = {
+                self.playerNode.stop()
+                if self.engine.isRunning {
+                    self.engine.stop()
+                }
+                if self.engine.attachedNodes.contains(self.playerNode) {
+                    self.engine.detach(self.playerNode)
+                }
+            }
+            if Thread.isMainThread {
+                detachEngine()
+            } else {
+                DispatchQueue.main.sync(execute: detachEngine)
+            }
+            #else
             self.playerNode.stop()
             self.engine.stop()
             if self.engine.attachedNodes.contains(self.playerNode) {
                 self.engine.detach(self.playerNode)
             }
+            #endif
             self.scheduleLock.lock()
             self.pendingScheduledBuffers = 0
             self.scheduleLock.unlock()
             self.didWireEngine = false
+            #if os(iOS)
+            self.wiredIOSPlayFormat = nil
+            #endif
+            #if os(iOS)
+            try? AVAudioSession.sharedInstance().overrideOutputAudioPort(.none)
+            #endif
         }
         if DispatchQueue.getSpecific(key: Self.workQueueMarker) == Self.workQueueTag {
             cleanup()
@@ -149,13 +193,21 @@ nonisolated final class CaptureAudioPlayback: NSObject,
         process(sampleBuffer: sampleBuffer, frameCount: frames)
     }
 
-    private func isMuted() -> Bool {
+    func isMuted() -> Bool {
         muteLock.lock()
         defer { muteLock.unlock() }
         return mutedFlag
     }
 
     private func process(sampleBuffer: CMSampleBuffer, frameCount: CMItemCount) {
+        #if os(iOS)
+        processIOS(sampleBuffer: sampleBuffer, frameCount: frameCount)
+        #else
+        processMacOS(sampleBuffer: sampleBuffer, frameCount: frameCount)
+        #endif
+    }
+
+    private func processMacOS(sampleBuffer: CMSampleBuffer, frameCount: CMItemCount) {
         guard !isStopped else { return }
         guard !isMuted() else { return }
 
@@ -182,6 +234,10 @@ nonisolated final class CaptureAudioPlayback: NSObject,
             }
         }
 
+        schedulePCMBuffer(pcmBuffer)
+    }
+
+    func schedulePCMBuffer(_ pcmBuffer: AVAudioPCMBuffer) {
         scheduleLock.lock()
         if pendingScheduledBuffers >= maxPendingScheduledBuffers {
             scheduleLock.unlock()
@@ -198,12 +254,20 @@ nonisolated final class CaptureAudioPlayback: NSObject,
         }
     }
 
+    func resetScheduledBufferCount() {
+        scheduleLock.lock()
+        pendingScheduledBuffers = 0
+        scheduleLock.unlock()
+    }
+
     private func wireEngine(with format: AVAudioFormat) throws {
         guard !engine.isRunning else {
             didWireEngine = true
             return
         }
-        engine.attach(playerNode)
+        if !engine.attachedNodes.contains(playerNode) {
+            engine.attach(playerNode)
+        }
         playerNode.volume = currentPlayerVolume()
         engine.mainMixerNode.volume = 1
         engine.connect(playerNode, to: engine.mainMixerNode, format: format)
@@ -213,7 +277,7 @@ nonisolated final class CaptureAudioPlayback: NSObject,
         didWireEngine = true
     }
 
-    private func currentPlayerVolume() -> Float {
+    func currentPlayerVolume() -> Float {
         muteLock.lock()
         defer { muteLock.unlock() }
         return mutedFlag ? 0 : volumeLevel
