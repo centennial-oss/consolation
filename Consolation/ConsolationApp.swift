@@ -105,6 +105,19 @@ struct ConsolationApp: App {
             CommandGroup(replacing: .pasteboard) {}
             CommandGroup(replacing: .textEditing) {}
             CommandGroup(replacing: .textFormatting) {}
+            CommandGroup(after: .toolbar) {
+                Section("Playback Size") {
+                    Button(".5x") {
+                        NotificationCenter.default.post(name: .playbackSizeCommand, object: CGFloat(0.5))
+                    }
+                    Button("1x") {
+                        NotificationCenter.default.post(name: .playbackSizeCommand, object: CGFloat(1))
+                    }
+                    Button("2x") {
+                        NotificationCenter.default.post(name: .playbackSizeCommand, object: CGFloat(2))
+                    }
+                }
+            }
         }
         #endif
     }

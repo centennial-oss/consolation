@@ -1,5 +1,5 @@
 //
-//  ContentView+WindowMac.swift
+//  ContentViewWindowMac.swift
 //  Consolation
 //
 
@@ -61,6 +61,30 @@ extension ContentView {
         }
     }
 
+    func resizeWindowToPlaybackScale(_ scale: CGFloat) {
+        guard let window,
+              let videoSize = capture.videoSize,
+              videoSize.width > 0,
+              videoSize.height > 0,
+              scale > 0
+        else {
+            return
+        }
+
+        let contentSize = CGSize(width: videoSize.width * scale, height: videoSize.height * scale)
+        let currentFrame = window.frame
+        let frameSize = window.frameRect(forContentRect: CGRect(origin: .zero, size: contentSize)).size
+        let origin = CGPoint(
+            x: currentFrame.midX - frameSize.width / 2,
+            y: currentFrame.midY - frameSize.height / 2
+        )
+        let targetFrame = clampFrameTopLeftToVisibleScreen(
+            CGRect(origin: origin, size: frameSize),
+            for: window
+        )
+        window.setFrame(targetFrame, display: true, animate: true)
+    }
+
     func updateWindowAspectRatio(for videoSize: CGSize?) {
         guard capture.state == .running else {
             resetWindowAspectRatio()
@@ -112,6 +136,19 @@ extension ContentView {
             y: currentFrame.midY - frameSize.height / 2
         )
         window.setFrame(CGRect(origin: origin, size: frameSize), display: true, animate: true)
+    }
+
+    func clampFrameTopLeftToVisibleScreen(_ frame: CGRect, for window: NSWindow) -> CGRect {
+        guard let visibleFrame = window.screen?.visibleFrame else { return frame }
+
+        var clampedFrame = frame
+        if clampedFrame.minX < visibleFrame.minX {
+            clampedFrame.origin.x = visibleFrame.minX
+        }
+        if clampedFrame.maxY > visibleFrame.maxY {
+            clampedFrame.origin.y = visibleFrame.maxY - clampedFrame.height
+        }
+        return clampedFrame
     }
 }
 #endif

@@ -17,7 +17,8 @@ actor CaptureSessionBackend {
     func startWatching(
         with session: AVCaptureSession,
         formatPreferences: CaptureVideoFormatPreferences,
-        initialAudioMuted: Bool
+        initialAudioMuted: Bool,
+        initialVolumeLevel: Double
     ) throws -> String {
         session.beginConfiguration()
 
@@ -36,7 +37,12 @@ actor CaptureSessionBackend {
             throw error
         }
 
-        addAudioInput(matchingVideoDevice: device, to: session, initialAudioMuted: initialAudioMuted)
+        addAudioInput(
+            matchingVideoDevice: device,
+            to: session,
+            initialAudioMuted: initialAudioMuted,
+            initialVolumeLevel: initialVolumeLevel
+        )
         setPreferredSessionPresetIfAvailable(session)
 
         session.commitConfiguration()
@@ -61,6 +67,10 @@ actor CaptureSessionBackend {
 
     func setAudioMuted(_ muted: Bool) {
         audioPlayback?.setMuted(muted)
+    }
+
+    func setVolumeLevel(_ level: Double) {
+        audioPlayback?.setVolumeLevel(level)
     }
 
     private func tearDownAudio(session: AVCaptureSession) {
@@ -124,7 +134,8 @@ actor CaptureSessionBackend {
     private func addAudioInput(
         matchingVideoDevice device: AVCaptureDevice,
         to session: AVCaptureSession,
-        initialAudioMuted: Bool
+        initialAudioMuted: Bool,
+        initialVolumeLevel: Double
     ) {
         guard let audioDevice = CaptureAudioDeviceSelection.pickPreferredAudioDevice(matchingVideoDevice: device),
               let input = try? AVCaptureDeviceInput(device: audioDevice),
@@ -135,13 +146,19 @@ actor CaptureSessionBackend {
 
         session.addInput(input)
         audioInput = input
-        attachAudioOutput(for: input, to: session, initialAudioMuted: initialAudioMuted)
+        attachAudioOutput(
+            for: input,
+            to: session,
+            initialAudioMuted: initialAudioMuted,
+            initialVolumeLevel: initialVolumeLevel
+        )
     }
 
     private func attachAudioOutput(
         for input: AVCaptureDeviceInput,
         to session: AVCaptureSession,
-        initialAudioMuted: Bool
+        initialAudioMuted: Bool,
+        initialVolumeLevel: Double
     ) {
         // Keep this low-latency AVAudioEngine path instead of AVCaptureAudioPreviewOutput.
         // Apple frameworks may log an AudioAnalytics sandbox fault for com.apple.audioanalyticsd;
@@ -167,7 +184,7 @@ actor CaptureSessionBackend {
         session.addOutput(output)
         audioDataOutput = output
         audioPlayback = playback
-        playback.setMutedBeforeCaptureStarts(initialAudioMuted)
+        playback.setAudioBeforeCaptureStarts(muted: initialAudioMuted, volumeLevel: initialVolumeLevel)
     }
 
     private func configureAudioOutput(_ output: AVCaptureAudioDataOutput) {

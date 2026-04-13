@@ -11,10 +11,10 @@ struct ContentView: View {
     #endif
     @State private var isUIHidden = false
     @State private var hoverTask: Task<Void, Never>?
-    @State private var playbackControlsOffset = CGSize.zero
-    @State private var playbackControlsSize = CGSize.zero
-    @State private var previewSize = CGSize.zero
-    @State private var isPlaybackControlsDragActive = false
+    @State var playbackControlsOffset = CGSize.zero
+    @State var playbackControlsSize = CGSize.zero
+    @State var previewSize = CGSize.zero
+    @State var isPlaybackControlsInteractionActive = false
     @GestureState private var playbackControlsDragOffset = CGSize.zero
 
     #if DEBUG
@@ -96,11 +96,12 @@ struct ContentView: View {
                 capture.refreshMediaCaptureAuthorizationStatuses()
             }
         }
-        .onTapGesture(count: 2) {
-            #if os(macOS)
-            zoomWindowToVideoAspectIfPossible()
-            #endif
+        #if os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for: .playbackSizeCommand)) { notification in
+            guard let scale = notification.object as? CGFloat else { return }
+            resizeWindowToPlaybackScale(scale)
         }
+        #endif
         .background {
             Button("") {
                 if capture.state == .running {
@@ -162,7 +163,7 @@ struct ContentView: View {
 
 }
 
-private extension ContentView {
+extension ContentView {
     var viewerChrome: some View {
         VStack {
             Spacer()
@@ -210,40 +211,6 @@ private extension ContentView {
         .shadow(radius: 10)
     }
 
-    var playbackControls: some View {
-        HStack(spacing: 16) {
-            Toggle(isOn: Binding(
-                get: { capture.isAudioMuted },
-                set: { capture.setAudioMuted($0) }
-            )) {
-                Text("Mute audio")
-            }
-            .toggleStyle(.switch)
-
-            Button("Stop Watching", role: .none) {
-                capture.stopWatching()
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .padding()
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(.quaternary, lineWidth: 1)
-        }
-        .shadow(radius: 8)
-        .background {
-            GeometryReader { proxy in
-                Color.clear
-                    .onAppear { setPlaybackControlsSize(proxy.size) }
-                    .onChange(of: proxy.size) { _, size in setPlaybackControlsSize(size) }
-            }
-        }
-        .padding(.bottom, playbackControlsBottomPadding)
-        .offset(playbackControlsCurrentOffset)
-        .simultaneousGesture(playbackControlsDragGesture)
-    }
-
     var statusRequiresInteraction: Bool {
         switch capture.state {
         case .running: return false
@@ -268,8 +235,8 @@ private extension ContentView {
                 state = value.translation
             }
             .onChanged { _ in
-                guard !isPlaybackControlsDragActive else { return }
-                isPlaybackControlsDragActive = true
+                guard !isPlaybackControlsInteractionActive else { return }
+                isPlaybackControlsInteractionActive = true
                 cancelHoverHideTask()
                 revealTransientChromeIfNeeded()
             }
@@ -279,7 +246,7 @@ private extension ContentView {
                     height: playbackControlsOffset.height + value.translation.height
                 ))
                 PlaybackControlsUserDefaults.savePosition(playbackControlsOffset)
-                isPlaybackControlsDragActive = false
+                isPlaybackControlsInteractionActive = false
                 resetHoverTimer()
             }
     }
@@ -341,7 +308,7 @@ private extension ContentView {
 
     /// Auto-hide overlays and traffic-light dimming only apply while actively watching.
     func resetHoverTimer() {
-        guard !isPlaybackControlsDragActive else {
+        guard !isPlaybackControlsInteractionActive else {
             cancelHoverHideTask()
             revealTransientChromeIfNeeded()
             return

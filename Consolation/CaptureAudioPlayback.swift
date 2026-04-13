@@ -29,6 +29,7 @@ nonisolated final class CaptureAudioPlayback: NSObject,
 
     private let muteLock = NSLock()
     private var mutedFlag = false
+    private var volumeLevel: Float = 1
 
     private let scheduleLock = NSLock()
     private var pendingScheduledBuffers = 0
@@ -75,10 +76,22 @@ nonisolated final class CaptureAudioPlayback: NSObject,
         }
     }
 
+    func setVolumeLevel(_ level: Double) {
+        let volume = Float(min(max(level, 0), 1))
+        if DispatchQueue.getSpecific(key: Self.workQueueMarker) == Self.workQueueTag {
+            applyVolumeLevel(volume)
+        } else {
+            workQueue.async { [weak self] in
+                self?.applyVolumeLevel(volume)
+            }
+        }
+    }
+
     /// Install persisted mute **before** `AVCaptureSession.startRunning()` so the first samples never schedule audio.
-    func setMutedBeforeCaptureStarts(_ muted: Bool) {
+    func setAudioBeforeCaptureStarts(muted: Bool, volumeLevel: Double) {
         workQueue.sync { [weak self] in
             self?.applyMutedState(muted)
+            self?.applyVolumeLevel(Float(min(max(volumeLevel, 0), 1)))
         }
     }
 
@@ -89,11 +102,19 @@ nonisolated final class CaptureAudioPlayback: NSObject,
         if muted {
             playerNode.volume = 0
         } else {
-            playerNode.volume = 1
+            playerNode.volume = volumeLevel
             if didWireEngine, engine.isRunning, !playerNode.isPlaying {
                 playerNode.play()
             }
         }
+    }
+
+    private func applyVolumeLevel(_ level: Float) {
+        muteLock.lock()
+        volumeLevel = level
+        let muted = mutedFlag
+        muteLock.unlock()
+        playerNode.volume = muted ? 0 : level
     }
 
     func stop() {
@@ -183,12 +204,18 @@ nonisolated final class CaptureAudioPlayback: NSObject,
             return
         }
         engine.attach(playerNode)
-        playerNode.volume = isMuted() ? 0 : 1
+        playerNode.volume = currentPlayerVolume()
         engine.mainMixerNode.volume = 1
         engine.connect(playerNode, to: engine.mainMixerNode, format: format)
         engine.prepare()
         try engine.start()
         playerNode.play()
         didWireEngine = true
+    }
+
+    private func currentPlayerVolume() -> Float {
+        muteLock.lock()
+        defer { muteLock.unlock() }
+        return mutedFlag ? 0 : volumeLevel
     }
 }
