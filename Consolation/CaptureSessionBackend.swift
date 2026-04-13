@@ -20,7 +20,8 @@ actor CaptureSessionBackend {
         with session: AVCaptureSession,
         formatPreferences: CaptureVideoFormatPreferences,
         initialAudioMuted: Bool,
-        initialVolumeLevel: Double
+        initialVolumeLevel: Double,
+        initialBufferLength: Int
     ) throws -> String {
         session.beginConfiguration()
 
@@ -46,7 +47,8 @@ actor CaptureSessionBackend {
             matchingVideoDevice: device,
             to: session,
             initialAudioMuted: initialAudioMuted,
-            initialVolumeLevel: initialVolumeLevel
+            initialVolumeLevel: initialVolumeLevel,
+            initialBufferLength: initialBufferLength
         )
 
         session.commitConfiguration()
@@ -80,6 +82,10 @@ actor CaptureSessionBackend {
 
     func setVolumeLevel(_ level: Double) {
         audioPlayback?.setVolumeLevel(level)
+    }
+
+    func setAudioBufferLength(_ length: Int) {
+        audioPlayback?.setMaxPendingScheduledBuffers(length)
     }
 
     private func tearDownAudio(session: AVCaptureSession) {
@@ -171,7 +177,8 @@ actor CaptureSessionBackend {
         matchingVideoDevice device: AVCaptureDevice,
         to session: AVCaptureSession,
         initialAudioMuted: Bool,
-        initialVolumeLevel: Double
+        initialVolumeLevel: Double,
+        initialBufferLength: Int
     ) {
         guard let audioDevice = CaptureAudioDeviceSelection.pickPreferredAudioDevice(matchingVideoDevice: device),
               let input = try? AVCaptureDeviceInput(device: audioDevice),
@@ -186,7 +193,8 @@ actor CaptureSessionBackend {
             for: input,
             to: session,
             initialAudioMuted: initialAudioMuted,
-            initialVolumeLevel: initialVolumeLevel
+            initialVolumeLevel: initialVolumeLevel,
+            initialBufferLength: initialBufferLength
         )
     }
 
@@ -194,7 +202,8 @@ actor CaptureSessionBackend {
         for input: AVCaptureDeviceInput,
         to session: AVCaptureSession,
         initialAudioMuted: Bool,
-        initialVolumeLevel: Double
+        initialVolumeLevel: Double,
+        initialBufferLength: Int
     ) {
         // Low-latency AVAudioEngine path. (`AVCaptureAudioPreviewOutput` exists on macOS only, not iOS.)
         let output = AVCaptureAudioDataOutput()
@@ -223,6 +232,7 @@ actor CaptureSessionBackend {
         audioDataOutput = output
         audioPlayback = playback
         playback.setAudioBeforeCaptureStarts(muted: initialAudioMuted, volumeLevel: initialVolumeLevel)
+        playback.setMaxPendingScheduledBuffers(initialBufferLength)
     }
 
     private func configureAudioOutput(_ output: AVCaptureAudioDataOutput) {
@@ -252,7 +262,10 @@ actor CaptureSessionBackend {
     }
     #endif
 
-    private func setPreferredSessionPresetIfAvailable(_ session: AVCaptureSession) {
+}
+
+private extension CaptureSessionBackend {
+    func setPreferredSessionPresetIfAvailable(_ session: AVCaptureSession) {
         #if os(iOS)
         if session.canSetSessionPreset(.inputPriority) {
             session.sessionPreset = .inputPriority
@@ -260,7 +273,7 @@ actor CaptureSessionBackend {
         #endif
     }
 
-    private func logActiveVideoFormat(for device: AVCaptureDevice) {
+    func logActiveVideoFormat(for device: AVCaptureDevice) {
         #if os(macOS)
         let minDuration = device.activeVideoMinFrameDuration
         let maxDuration = device.activeVideoMaxFrameDuration
@@ -275,7 +288,7 @@ actor CaptureSessionBackend {
     }
 
     /// Returns the first USB UVC capture device found, or `nil` when none is connected.
-    private static func pickPreferredVideoDevice() -> AVCaptureDevice? {
+    static func pickPreferredVideoDevice() -> AVCaptureDevice? {
         let types: [AVCaptureDevice.DeviceType] = [.external]
 
         let discovery = AVCaptureDevice.DiscoverySession(

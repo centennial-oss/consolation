@@ -34,7 +34,7 @@ nonisolated final class CaptureAudioPlayback: NSObject,
     private let scheduleLock = NSLock()
     private var pendingScheduledBuffers = 0
     /// Keep the player queue short so latency stays low, but large enough to avoid jitter/garble.
-    private let maxPendingScheduledBuffers = 8
+    private var maxPendingScheduledBuffers = CaptureAudioUserDefaults.defaultBufferLength
 
     #if os(iOS)
     let engineWireLock = NSLock()
@@ -104,6 +104,21 @@ nonisolated final class CaptureAudioPlayback: NSObject,
         } else {
             workQueue.async { [weak self] in
                 self?.applyVolumeLevel(volume)
+            }
+        }
+    }
+
+    func setMaxPendingScheduledBuffers(_ length: Int) {
+        let normalizedLength = CaptureAudioUserDefaults.bufferLengthOptions.contains(length)
+            ? length
+            : CaptureAudioUserDefaults.defaultBufferLength
+        if DispatchQueue.getSpecific(key: Self.workQueueMarker) == Self.workQueueTag {
+            maxPendingScheduledBuffers = normalizedLength
+            resetScheduledBufferCount()
+        } else {
+            workQueue.async { [weak self] in
+                self?.maxPendingScheduledBuffers = normalizedLength
+                self?.resetScheduledBufferCount()
             }
         }
     }

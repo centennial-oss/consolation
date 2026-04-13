@@ -10,50 +10,9 @@ import SwiftUI
 #if os(macOS)
 import AppKit
 
-/// Single-window viewer: strip **Edit** / **Format**, disable window tabbing.
+/// Single-window viewer: strip **Format**, disable window tabbing.
 /// SwiftUI may rebuild `mainMenu`; observe and strip again.
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var mainMenuObservation: NSKeyValueObservation?
-
-    /// `item(withTitle:)` is not localized; cover common macOS menu titles for **Edit**.
-    private static let editMenuBarTitles: [String] = [
-        "Edit",
-        "Bearbeiten",
-        "Édition",
-        "Éditer",
-        "Edición",
-        "Modifica",
-        "Redigera",
-        "Rediger",
-        "Bewerken",
-        "Edytuj",
-        "Edycja",
-        "Редактирование",
-        "Правка",
-        "编辑",
-        "編輯",
-        "編集",
-        "편집",
-        "Upravit",
-        "Muokkaa"
-    ]
-
-    /// Common macOS menu titles for **Format** (rich text / font menus SwiftUI can add).
-    private static let formatMenuBarTitles: [String] = [
-        "Format",
-        "Formato",
-        "Formát",
-        "Formaat",
-        "Opmaak",
-        "Muotoilu",
-        "格式",
-        "フォーマット",
-        "형식",
-        "Формат",
-        "Formátovanie",
-        "Formattazione"
-    ]
-
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
     }
@@ -62,42 +21,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Hides **View ▸ Show Tab Bar** / **Show All Tabs** for the whole app (single-window viewer).
         NSWindow.allowsAutomaticWindowTabbing = false
     }
-
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        stripUnwantedMenusIfNeeded()
-        mainMenuObservation = NSApp.observe(\.mainMenu, options: [.new]) { [weak self] _, _ in
-            self?.stripUnwantedMenusIfNeeded()
-        }
-    }
-
-    private func stripUnwantedMenusIfNeeded() {
-        guard let mainMenu = NSApp.mainMenu else { return }
-        Self.removeFirstMenuItem(matchingAnyTitleIn: Self.editMenuBarTitles, from: mainMenu)
-        Self.removeFirstMenuItem(matchingAnyTitleIn: Self.formatMenuBarTitles, from: mainMenu)
-    }
-
-    /// Removes at most one top-level item whose title matches any string in `titles` (localized alternates).
-    private static func removeFirstMenuItem(matchingAnyTitleIn titles: [String], from mainMenu: NSMenu) {
-        for title in titles {
-            guard let item = mainMenu.item(withTitle: title) else { continue }
-            mainMenu.removeItem(item)
-            return
-        }
-    }
 }
 #endif
 
+extension Notification.Name {
+    static let audioMuteToggleCommand = Notification.Name("org.centennialoss.consolation.audioMuteToggleCommand")
+    static let audioVolumeLevelCommand = Notification.Name("org.centennialoss.consolation.audioVolumeLevelCommand")
+    static let audioBufferLengthCommand = Notification.Name("org.centennialoss.consolation.audioBufferLengthCommand")
+}
+
 @main
 struct ConsolationApp: App {
+    @StateObject private var captureSession = CaptureSessionManager()
+
     #if os(macOS)
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @AppStorage(CaptureAudioUserDefaults.isMutedKey) private var isAudioMuted = false
+    @AppStorage(CaptureAudioUserDefaults.volumeLevelKey) private var volumeLevel = 1.0
+    @AppStorage(CaptureAudioUserDefaults.bufferLengthKey) private var audioBufferLength =
+        CaptureAudioUserDefaults.defaultBufferLength
     #elseif os(iOS)
     @UIApplicationDelegateAdaptor(IOSAppOrientationDelegate.self) var iosOrientationDelegate
     #endif
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(capture: captureSession)
         }
         #if os(iOS)
         .windowResizability(.contentMinSize)
@@ -106,10 +55,6 @@ struct ConsolationApp: App {
         .windowStyle(.hiddenTitleBar)
         .commands {
             CommandGroup(replacing: .newItem) {}
-            CommandGroup(replacing: .undoRedo) {}
-            CommandGroup(replacing: .pasteboard) {}
-            CommandGroup(replacing: .textEditing) {}
-            CommandGroup(replacing: .textFormatting) {}
             CommandGroup(after: .toolbar) {
                 Section("Playback Size") {
                     Button(".5x") {
@@ -122,8 +67,69 @@ struct ConsolationApp: App {
                         NotificationCenter.default.post(name: .playbackSizeCommand, object: CGFloat(2))
                     }
                 }
+                .disabled(captureSession.state != .running)
+            }
+            CommandMenu("Audio") {
+                Section("Volume Level") {
+                    Button {
+                        isAudioMuted.toggle()
+                        NotificationCenter.default.post(name: .audioMuteToggleCommand, object: isAudioMuted)
+                    } label: {
+                        if isAudioMuted {
+                            Label("Muted", systemImage: "checkmark")
+                        } else {
+                            Text("Muted")
+                        }
+                    }
+                    audioVolumeOption(label: "10%", level: 0.10)
+                    audioVolumeOption(label: "25%", level: 0.25)
+                    audioVolumeOption(label: "50%", level: 0.50)
+                    audioVolumeOption(label: "75%", level: 0.75)
+                    audioVolumeOption(label: "100%", level: 1.0)
+                }
+
+                Divider()
+
+                Section("Buffer Length") {
+                    ForEach(CaptureAudioUserDefaults.bufferLengthOptions, id: \.self) { length in
+                        audioBufferLengthOption(length)
+                    }
+                }
             }
         }
         #endif
     }
+
+    #if os(macOS)
+    @ViewBuilder
+    private func audioVolumeOption(label: String, level: Double) -> some View {
+        Button {
+            volumeLevel = level
+            NotificationCenter.default.post(name: .audioVolumeLevelCommand, object: level)
+            if isAudioMuted {
+                isAudioMuted = false
+                NotificationCenter.default.post(name: .audioMuteToggleCommand, object: false)
+            }
+        } label: {
+            Text(label)
+        }
+    }
+
+    @ViewBuilder
+    private func audioBufferLengthOption(_ length: Int) -> some View {
+        let label = length == CaptureAudioUserDefaults.defaultBufferLength
+            ? "\(length) (default)"
+            : "\(length)"
+        Button {
+            audioBufferLength = length
+            NotificationCenter.default.post(name: .audioBufferLengthCommand, object: length)
+        } label: {
+            if audioBufferLength == length {
+                Label(label, systemImage: "checkmark")
+            } else {
+                Text(label)
+            }
+        }
+    }
+    #endif
 }

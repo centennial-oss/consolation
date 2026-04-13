@@ -6,13 +6,13 @@ import UIKit
 #endif
 
 struct ContentView: View {
-    @StateObject var capture = CaptureSessionManager()
+    @ObservedObject var capture: CaptureSessionManager
     @Environment(\.scenePhase) private var scenePhase
     #if os(macOS)
     @State var window: NSWindow?
     #endif
-    @State private var isUIHidden = false
-    @State private var hoverTask: Task<Void, Never>?
+    @State var isUIHidden = false
+    @State var hoverTask: Task<Void, Never>?
     @State var playbackControlsOffset = CGSize.zero
     @State var playbackControlsSize = CGSize.zero
     @State var previewSize = CGSize.zero
@@ -126,6 +126,18 @@ struct ContentView: View {
             guard let scale = notification.object as? CGFloat else { return }
             resizeWindowToPlaybackScale(scale)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .audioMuteToggleCommand)) { notification in
+            guard let muted = notification.object as? Bool else { return }
+            capture.setAudioMuted(muted)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .audioVolumeLevelCommand)) { notification in
+            guard let level = notification.object as? Double else { return }
+            capture.setVolumeLevel(level)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .audioBufferLengthCommand)) { notification in
+            guard let length = notification.object as? Int else { return }
+            capture.setAudioBufferLength(length)
+        }
         #endif
         .background {
             Button("") {
@@ -182,7 +194,7 @@ struct ContentView: View {
             Button("") { showDeviceDebug = true }
                 .keyboardShortcut("d", modifiers: [.command, .shift])
                 .hidden()
-        }       
+        }
         #endif
     }
 
@@ -374,27 +386,4 @@ extension ContentView {
         }
     }
 
-    func cancelHoverHideTask() {
-        hoverTask?.cancel()
-        hoverTask = nil
-    }
-
-    func revealTransientChromeIfNeeded() {
-        guard isUIHidden else { return }
-        withAnimation(.easeInOut(duration: 0.3)) {
-            isUIHidden = false
-        }
-        #if os(macOS)
-        window?.standardWindowButton(.closeButton)?.superview?.animator().alphaValue = 1.0
-        #endif
-    }
-
-    func cancelAutoHideChrome() {
-        cancelHoverHideTask()
-        revealTransientChromeIfNeeded()
-    }
-}
-
-#Preview {
-    ContentView()
 }

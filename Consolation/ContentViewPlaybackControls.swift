@@ -101,7 +101,9 @@ extension ContentView {
 
             #if os(macOS)
             PlaybackToolbarIconButton(
-                systemName: isFullscreenActive ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
+                systemName: isFullscreenActive
+                    ? "arrow.down.right.and.arrow.up.left"
+                    : "arrow.up.left.and.arrow.down.right",
                 accessibilityLabel: "Full Screen",
                 iconColor: isFullscreenActive ? .accentColor : .white,
                 action: { window?.toggleFullScreen(nil) }

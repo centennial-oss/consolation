@@ -1,4 +1,4 @@
-.PHONY: build build-release-unsigned lint lint-fix-safe test clean
+.PHONY: build build-macos build-ipad build-release-unsigned lint lint-fix-safe test clean
 
 # SwiftLint: https://github.com/realm/SwiftLint - `brew install swiftlint`
 SWIFTLINT ?= $(shell command -v swiftlint 2>/dev/null)
@@ -34,10 +34,17 @@ lint-fix-safe:
 clean:
 	rm -rf build dist
 
-build: lint
+build: lint build-macos build-ipad
+
+build-macos:
 	mkdir -p build
-	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED_DATA) build CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED_DATA) -destination 'platform=macOS' build CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
 	cp -R "$(DERIVED_DATA)/Build/Products/Debug/$(APP_NAME).app" build/
+
+build-ipad:
+	mkdir -p build
+	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED_DATA) -destination 'generic/platform=iOS Simulator' build CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+	cp -R "$(DERIVED_DATA)/Build/Products/Debug-iphonesimulator/$(APP_NAME).app" "build/$(APP_NAME)-iPad.app"
 
 build-release-unsigned:
 	mkdir -p dist

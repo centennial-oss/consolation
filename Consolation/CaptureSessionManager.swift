@@ -28,6 +28,9 @@ final class CaptureSessionManager: ObservableObject {
     /// Live audio output level, separate from mute so unmuting restores the prior level.
     @Published private(set) var volumeLevel: Double
 
+    /// Max number of queued PCM buffers kept pending in `CaptureAudioPlayback`.
+    @Published private(set) var audioBufferLength: Int
+
     /// Published dimensions of the currently active video feed to inform UI aspect ratio logic natively.
     @Published private(set) var videoSize: CGSize?
 
@@ -49,6 +52,7 @@ final class CaptureSessionManager: ObservableObject {
         CaptureAudioUserDefaults.registerDefaults()
         isAudioMuted = CaptureAudioUserDefaults.loadIsMuted()
         volumeLevel = CaptureAudioUserDefaults.loadVolumeLevel()
+        audioBufferLength = CaptureAudioUserDefaults.loadBufferLength()
         self.formatPreferences = formatPreferences ?? CaptureVideoFormatPreferences.loadFromStorage()
         beginObservingExternalCapturePresence()
         refreshMediaCaptureAuthorizationStatuses()
@@ -147,19 +151,23 @@ final class CaptureSessionManager: ObservableObject {
         let prefs = formatPreferences
         let muted = CaptureAudioUserDefaults.loadIsMuted()
         let volumeLevel = CaptureAudioUserDefaults.loadVolumeLevel()
+        let bufferLength = CaptureAudioUserDefaults.loadBufferLength()
         do {
             let name = try await backend.startWatching(
                 with: session,
                 formatPreferences: prefs,
                 initialAudioMuted: muted,
-                initialVolumeLevel: volumeLevel
+                initialVolumeLevel: volumeLevel,
+                initialBufferLength: bufferLength
             )
             state = .running
             statusMessage = name
             isAudioMuted = muted
             self.volumeLevel = volumeLevel
+            audioBufferLength = bufferLength
             await backend.setAudioMuted(muted)
             await backend.setVolumeLevel(volumeLevel)
+            await backend.setAudioBufferLength(bufferLength)
             videoSize = await backend.activeVideoSize
         } catch let error as CaptureSessionError {
             switch error {
@@ -183,6 +191,7 @@ final class CaptureSessionManager: ObservableObject {
             self.statusMessage = nil
             self.isAudioMuted = CaptureAudioUserDefaults.loadIsMuted()
             self.volumeLevel = CaptureAudioUserDefaults.loadVolumeLevel()
+            self.audioBufferLength = CaptureAudioUserDefaults.loadBufferLength()
             self.videoSize = nil
             self.refreshMediaCaptureAuthorizationStatuses()
         }
@@ -203,6 +212,7 @@ final class CaptureSessionManager: ObservableObject {
             }
             self.isAudioMuted = CaptureAudioUserDefaults.loadIsMuted()
             self.volumeLevel = CaptureAudioUserDefaults.loadVolumeLevel()
+            self.audioBufferLength = CaptureAudioUserDefaults.loadBufferLength()
             self.videoSize = nil
             self.refreshMediaCaptureAuthorizationStatuses()
         }
@@ -222,6 +232,17 @@ final class CaptureSessionManager: ObservableObject {
         CaptureAudioUserDefaults.saveVolumeLevel(clamped)
         Task {
             await backend.setVolumeLevel(clamped)
+        }
+    }
+
+    func setAudioBufferLength(_ length: Int) {
+        let normalizedLength = CaptureAudioUserDefaults.bufferLengthOptions.contains(length)
+            ? length
+            : CaptureAudioUserDefaults.defaultBufferLength
+        audioBufferLength = normalizedLength
+        CaptureAudioUserDefaults.saveBufferLength(normalizedLength)
+        Task {
+            await backend.setAudioBufferLength(normalizedLength)
         }
     }
 

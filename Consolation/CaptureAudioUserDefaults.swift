@@ -7,13 +7,17 @@ import Foundation
 
 /// Persisted separately from any future `volumeLevel` slider so mute/unmute does not clobber stored volume.
 enum CaptureAudioUserDefaults {
-    static let isMutedKey = "org.centennialoss.consolation.captureAudioMuted"
-    static let volumeLevelKey = "org.centennialoss.consolation.captureAudioVolumeLevel"
+    nonisolated static let isMutedKey = "org.centennialoss.consolation.captureAudioMuted"
+    nonisolated static let volumeLevelKey = "org.centennialoss.consolation.captureAudioVolumeLevel"
+    nonisolated static let bufferLengthKey = "org.centennialoss.consolation.captureAudioBufferLength"
+    nonisolated static let bufferLengthOptions: [Int] = [1, 2, 4, 8, 16, 32, 64]
+    nonisolated static let defaultBufferLength = 8
 
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
             isMutedKey: false,
-            volumeLevelKey: 1.0
+            volumeLevelKey: 1.0,
+            bufferLengthKey: defaultBufferLength
         ])
     }
 
@@ -34,5 +38,16 @@ enum CaptureAudioUserDefaults {
     static func saveVolumeLevel(_ level: Double) {
         guard level.isFinite else { return }
         UserDefaults.standard.set(min(max(level, 0), 1), forKey: volumeLevelKey)
+    }
+
+    static func loadBufferLength() -> Int {
+        let savedLength = UserDefaults.standard.integer(forKey: bufferLengthKey)
+        guard bufferLengthOptions.contains(savedLength) else { return defaultBufferLength }
+        return savedLength
+    }
+
+    static func saveBufferLength(_ length: Int) {
+        guard bufferLengthOptions.contains(length) else { return }
+        UserDefaults.standard.set(length, forKey: bufferLengthKey)
     }
 }
