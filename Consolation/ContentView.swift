@@ -348,7 +348,6 @@ extension ContentView {
             }
         }
     }
-
 }
 
 private struct ContentViewStatusPanelChrome: View {
@@ -356,52 +355,46 @@ private struct ContentViewStatusPanelChrome: View {
     let showStatusLine: Bool
 
     var body: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 12) {
-                appIcon
-                    .resizable()
-                    .frame(width: 52, height: 52)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        VStack {
+            VStack(spacing: 16) {
+                HStack(spacing: 12) {
+                    AppIconImage()
+                        .frame(width: 52, height: 52)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                Text(BuildInfo.appName)
-                    .font(.system(size: 36, weight: .bold))
-                    .foregroundStyle(.white)
-                    .multilineTextAlignment(.center)
-            }
-            Divider()
-
-            if showStatusLine {
-                CaptureStatusLine(
-                    state: capture.state,
-                    hasUSBVideoCaptureDevice: !capture.usbCaptureDeviceEntries.isEmpty,
-                    usbVideoCaptureDeviceName: capture.primaryUSBVideoCaptureDisplayName,
-                    hasAnyVideoDevice: !capture.hasNoVideoDevices,
-                    statusMessage: capture.statusMessage
-                )
-            }
-
-            if capture.mediaPermissionNotice != .none,
-               capture.state != .requestingPermission {
-                CaptureMediaPermissionEducationNotice(notice: capture.mediaPermissionNotice)
-            }
-
-            if !capture.hasNoVideoDevices {
-                ContentViewConnectPanel(capture: capture)
-            }
-
-            if capture.canStartWatching {
+                    Text(BuildInfo.appName)
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                }
                 Divider()
-                ContentViewStartWatchingButton(capture: capture)
+
+                if showStatusLine {
+                    CaptureStatusLine(
+                        state: capture.state,
+                        hasUSBVideoCaptureDevice: !capture.usbCaptureDeviceEntries.isEmpty,
+                        usbVideoCaptureDeviceName: capture.primaryUSBVideoCaptureDisplayName,
+                        hasAnyVideoDevice: !capture.hasNoVideoDevices,
+                        statusMessage: capture.statusMessage
+                    )
+                }
+
+                if capture.mediaPermissionNotice != .none,
+                capture.state != .requestingPermission {
+                    CaptureMediaPermissionEducationNotice(notice: capture.mediaPermissionNotice)
+                }
+
+                if !capture.hasNoVideoDevices {
+                    ContentViewConnectPanel(capture: capture)
+                }
+
+                if capture.canStartWatching {
+                    Divider()
+                    ContentViewStartWatchingButton(capture: capture)
+                }
             }
+            .frame(maxWidth: 540)
         }
         .frame(maxWidth: 540)
-    }
-
-    private var appIcon: Image {
-        #if os(macOS)
-        Image(nsImage: NSApp.applicationIconImage)
-        #else
-        Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
-        #endif
     }
 }

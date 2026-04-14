@@ -40,18 +40,17 @@ struct CaptureMediaPermissionEducationNotice: View {
                 EmptyView()
             case .notDetermined:
                 Text(
-                    "Apple treats USB capture hardware like a webcam. While Camera or Microphone access is "
-                        + "still \"not set,\" starting playback will show the system prompts for Camera "
-                        + "(your capture device's video) and Microphone (audio from that device)."
+                    """
+                    When you press Play, you'll be asked to allow Camera and Microphone access.
+                    These permissions are required because macOS treats Capture Cards as Webcams.
+                    """
                 )
+                Divider()
             case .deniedOrRestricted:
                 deniedOrRestrictedCopy
             }
         }
-        .font(.footnote)
-        .foregroundStyle(.tertiary)
         .multilineTextAlignment(.center)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder

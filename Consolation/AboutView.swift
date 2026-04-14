@@ -5,12 +5,6 @@
 
 import SwiftUI
 
-#if os(macOS)
-import AppKit
-#elseif os(iOS)
-import UIKit
-#endif
-
 struct AboutConsolationView: View {
     let onClose: () -> Void
 
@@ -29,26 +23,47 @@ struct AboutConsolationView: View {
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
 
-            Label("\(BuildInfo.appName) is a USB Capture Card utility for viewing gaming consoles, Raspberry Pis, and other HDMI devices in a Mac or iPad window.", systemImage: "play.rectangle")
+            Label(
+                "\(BuildInfo.appName) is a USB Capture Card utility for viewing gaming consoles, Raspberry Pis, " +
+                    "and other HDMI devices on a Mac or iPad.",
+                systemImage: "play.rectangle"
+            )
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Label("\(BuildInfo.appName) is 100% private. It does not collect analytics or snoop on your usage. Nothing ever leaves your device. Period.", systemImage: "shield")
+            Label(
+                "External USB Video Class (UVC) capture hardware is required.",
+                systemImage: "exclamationmark.triangle"
+            )
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Label("\(BuildInfo.appName) is completely free and open source for you to enjoy.", systemImage: "heart")
+            Label(
+                "\(BuildInfo.appName) is 100% private. It does not collect analytics or snoop on your usage. " +
+                    "Nothing ever leaves your device. Period.",
+                systemImage: "shield"
+            )
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Label("This software is completely free and open source for you to enjoy.",
+                systemImage: "heart"
+            )
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
 
             Link(destination: githubURL) {
-                Label("GitHub: centennial-oss/consolation", systemImage: "arrow.up.right.square")
+                Label("GitHub: centennial-oss/consolation",
+                systemImage: "arrow.up.right.square"
+            )
                     .foregroundStyle(linkColor)
                     .underline(isGitHubLinkHovered, color: linkColor.opacity(0.8))
             }
@@ -61,7 +76,9 @@ struct AboutConsolationView: View {
 
             HStack(spacing: 12) {
                 Link(destination: appStoreReviewURL) {
-                    Label("Rate \(BuildInfo.appName) on the App Store", systemImage: "star.leadinghalf.filled")
+                    Label("Rate \(BuildInfo.appName) on the App Store",
+                    systemImage: "star.leadinghalf.filled"
+                )
                         .foregroundStyle(linkColor)
                         .underline(isAppStoreLinkHovered, color: linkColor.opacity(0.8))
                 }
@@ -93,8 +110,7 @@ struct AboutConsolationView: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            appIcon
-                .resizable()
+            AppIconImage()
                 .frame(width: 64, height: 64)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
@@ -136,14 +152,6 @@ struct AboutConsolationView: View {
         Color(nsColor: .linkColor)
         #else
         Color(uiColor: .link)
-        #endif
-    }
-
-    private var appIcon: Image {
-        #if os(macOS)
-        Image(nsImage: NSApp.applicationIconImage)
-        #else
-        Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
         #endif
     }
 
