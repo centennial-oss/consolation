@@ -15,7 +15,7 @@ enum CaptureVideoStatsOverlayLocation: String, CaseIterable {
 
     static var menuLocations: [CaptureVideoStatsOverlayLocation] {
         #if os(iOS)
-        allCases.filter { $0 != .bottomCenter }
+        [.bottomLeft, .bottomRight]
         #else
         allCases
         #endif
