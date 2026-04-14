@@ -6,7 +6,7 @@ Consolation is coming soon to the App Store. Release downloads will also be avai
 
 ## About
 
-Consolation is a free app enables your Mac or iPad to be used as a screen for devices like gaming consoles, Raspberry Pis, and even a Mac Mini, via a standard USB Video Class (UVC) video capture card.
+Consolation is a free app that enables your Mac or iPad to be used as a screen for devices like gaming consoles, Raspberry Pis, and even a Mac Mini, via a standard USB Video Class (UVC) video capture card.
 
 The app is intentionally simple: watch the live feed in a window or full screen. No recording or saving, no streaming to the internet. Just plug and play, privately with no ads or tracking.
 
