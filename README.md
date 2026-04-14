@@ -1,4 +1,4 @@
-# <img src="assets/app-icon" alt="Consolation" height="48" /> Consolation
+# <img src="assets/app-icon.png" alt="Consolation" height="48" /> Consolation
 
 A no-frills video capture viewer for macOS and iPadOS.
 
