@@ -27,6 +27,44 @@ struct WindowAccessor: NSViewRepresentable {
 }
 
 extension ContentView {
+    @ViewBuilder
+    var macOSHiddenPlaybackShortcuts: some View {
+        Group {
+            Button("") {
+                handleSpaceOrKPlaybackShortcut()
+            }
+            .keyboardShortcut(.space, modifiers: [])
+            .hidden()
+
+            Button("") {
+                handleSpaceOrKPlaybackShortcut()
+            }
+            .keyboardShortcut("k", modifiers: [])
+            .hidden()
+
+            Button("") {
+                guard let window else { return }
+                if window.styleMask.contains(.fullScreen) {
+                    window.toggleFullScreen(nil)
+                }
+            }
+            .keyboardShortcut(.cancelAction)
+            .hidden()
+
+            Button("") {
+                window?.toggleFullScreen(nil)
+            }
+            .keyboardShortcut("f", modifiers: [])
+            .hidden()
+
+            Button("") {
+                zoomWindowToVideoAspectIfPossible()
+            }
+            .keyboardShortcut("z", modifiers: [])
+            .hidden()
+        }
+    }
+
     /// Double-click and **Z**: fit the window to the video aspect in the visible screen.
     /// When already fit, toggles native zoom (`NSWindow.zoom`).
     func zoomWindowToVideoAspectIfPossible() {

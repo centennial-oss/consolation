@@ -15,19 +15,23 @@ actor CaptureSessionBackend {
     private var audioDataOutput: AVCaptureAudioDataOutput?
     private var audioPlayback: CaptureAudioPlayback?
     private(set) var activeVideoSize: CGSize?
+    /// Nominal capture FPS from locked min/max frame duration after configuration (for stats UI).
+    private(set) var activeNominalFrameRate: Double?
+    private var videoStatsUpdateHandler: (@Sendable (CaptureVideoFrameRateStats) -> Void)?
+
+    func setVideoStatsUpdateHandler(_ handler: (@Sendable (CaptureVideoFrameRateStats) -> Void)?) {
+        videoStatsUpdateHandler = handler
+    }
 
     func startWatching(
         with session: AVCaptureSession,
-        formatPreferences: CaptureVideoFormatPreferences,
-        initialAudioMuted: Bool,
-        initialVolumeLevel: Double,
-        initialBufferLength: Int
+        configuration: CaptureSessionStartConfiguration
     ) throws -> String {
         session.beginConfiguration()
 
         tearDownSessionInputs(session: session)
 
-        guard let device = Self.pickPreferredVideoDevice() else {
+        guard let device = Self.resolveVideoDevice(uniqueID: configuration.videoDeviceUniqueID) else {
             session.commitConfiguration()
             throw CaptureSessionError.noVideoDevice
         }
@@ -36,7 +40,12 @@ actor CaptureSessionBackend {
 
         do {
             let input = try addVideoInput(for: device, to: session)
-            try configureVideoDevice(device, input: input, session: session, formatPreferences: formatPreferences)
+            try configureVideoDevice(
+                device,
+                input: input,
+                session: session,
+                formatPreferences: configuration.formatPreferences
+            )
             addVideoFrameRateMonitor(to: session)
         } catch {
             session.commitConfiguration()
@@ -46,16 +55,14 @@ actor CaptureSessionBackend {
         addAudioInput(
             matchingVideoDevice: device,
             to: session,
-            initialAudioMuted: initialAudioMuted,
-            initialVolumeLevel: initialVolumeLevel,
-            initialBufferLength: initialBufferLength
+            initialAudioMuted: configuration.initialAudioMuted,
+            initialVolumeLevel: configuration.initialVolumeLevel,
+            initialBufferLength: configuration.initialBufferLength
         )
 
         session.commitConfiguration()
         session.startRunning()
-        #if os(macOS)
-        reapplyFormatAfterStart(device: device, preferences: formatPreferences)
-        #endif
+        reapplyFormatAfterStart(device: device, preferences: configuration.formatPreferences)
         logActiveVideoFormat(for: device)
         return device.localizedName
     }
@@ -73,6 +80,7 @@ actor CaptureSessionBackend {
             videoInput = nil
         }
         activeVideoSize = nil
+        activeNominalFrameRate = nil
         session.commitConfiguration()
     }
 
@@ -154,6 +162,7 @@ actor CaptureSessionBackend {
         let format = device.activeFormat
         let dims = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
         activeVideoSize = CGSize(width: CGFloat(dims.width), height: CGFloat(dims.height))
+        updateActiveNominalFrameRate(device: device)
     }
 
     private func addVideoFrameRateMonitor(to session: AVCaptureSession) {
@@ -161,6 +170,10 @@ actor CaptureSessionBackend {
         output.alwaysDiscardsLateVideoFrames = true
 
         let monitor = CaptureVideoFrameRateMonitor()
+        monitor.onStatsInterval = { [weak output] stats in
+            guard output != nil else { return }
+            Task { await self.publishVideoStats(stats) }
+        }
         output.setSampleBufferDelegate(monitor, queue: monitor.queue)
 
         guard session.canAddOutput(output) else {
@@ -171,6 +184,10 @@ actor CaptureSessionBackend {
         session.addOutput(output)
         videoDataOutput = output
         videoFrameRateMonitor = monitor
+    }
+
+    private func publishVideoStats(_ stats: CaptureVideoFrameRateStats) {
+        videoStatsUpdateHandler?(stats)
     }
 
     private func addAudioInput(
@@ -248,19 +265,33 @@ actor CaptureSessionBackend {
         #endif
     }
 
-    #if os(macOS)
-    /// macOS's UVC stack resets both the active format and frame duration when the session starts.
-    /// Re-lock the device and re-apply both immediately after `startRunning()`.
+    /// UVC / external capture on both macOS and iPadOS can reset active format or frame duration when
+    /// the session starts; re-apply preferences immediately after `startRunning()`.
     private func reapplyFormatAfterStart(device: AVCaptureDevice, preferences: CaptureVideoFormatPreferences) {
         do {
             try device.lockForConfiguration()
             defer { device.unlockForConfiguration() }
             try CaptureFormatSelector.reapplyFormatAndFrameDuration(device: device, preferences: preferences)
+            updateActiveNominalFrameRate(device: device)
         } catch {
-            print("Consolation macOS video: failed to reapply format after startRunning: \(error)")
+            print("Consolation video: failed to reapply format after startRunning: \(error)")
         }
     }
-    #endif
+
+    private func updateActiveNominalFrameRate(device: AVCaptureDevice) {
+        let minDuration = device.activeVideoMinFrameDuration
+        let maxDuration = device.activeVideoMaxFrameDuration
+        guard minDuration.seconds > 0, minDuration.seconds.isFinite else {
+            activeNominalFrameRate = nil
+            return
+        }
+        if maxDuration.seconds > 0, maxDuration.seconds.isFinite,
+           abs(minDuration.seconds - maxDuration.seconds) < 1e-6 {
+            activeNominalFrameRate = 1.0 / minDuration.seconds
+        } else {
+            activeNominalFrameRate = 1.0 / minDuration.seconds
+        }
+    }
 
 }
 
@@ -274,30 +305,22 @@ private extension CaptureSessionBackend {
     }
 
     func logActiveVideoFormat(for device: AVCaptureDevice) {
-        #if os(macOS)
         let minDuration = device.activeVideoMinFrameDuration
         let maxDuration = device.activeVideoMaxFrameDuration
         let minFPS = minDuration.seconds > 0 ? 1 / minDuration.seconds : 0
         let maxFPS = maxDuration.seconds > 0 ? 1 / maxDuration.seconds : 0
         print(
-            "Consolation macOS video active format: " +
+            "Consolation video active format: " +
             "\(CaptureFormatSelector.videoFormatDescription(device.activeFormat)), " +
             "minFPS=\(minFPS), maxFPS=\(maxFPS)"
         )
-        #endif
     }
 
-    /// Returns the first USB UVC capture device found, or `nil` when none is connected.
-    static func pickPreferredVideoDevice() -> AVCaptureDevice? {
-        let types: [AVCaptureDevice.DeviceType] = [.external]
-
-        let discovery = AVCaptureDevice.DiscoverySession(
-            deviceTypes: types,
-            mediaType: .video,
-            position: .unspecified
-        )
-        let uvcDevices = discovery.devices.filter { deviceIsUSBVideoCapture($0) }
-        if let chosen = uvcDevices.first { return chosen }
+    /// Resolves the device chosen in the connect panel, with a simulator fallback when discovery is empty.
+    static func resolveVideoDevice(uniqueID: String) -> AVCaptureDevice? {
+        if let device = AVCaptureDevice(uniqueID: uniqueID), device.hasMediaType(.video) {
+            return device
+        }
 
         #if targetEnvironment(simulator)
         return AVCaptureDevice.DiscoverySession(

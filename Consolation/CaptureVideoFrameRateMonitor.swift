@@ -6,8 +6,17 @@
 @preconcurrency import AVFoundation
 import Foundation
 
+struct CaptureVideoFrameRateStats: Sendable {
+    let wallFPS: Double
+    let presentationFPS: Double
+    let frames: Int
+    let droppedFrames: Int
+    let maxPresentationGap: Double
+}
+
 nonisolated final class CaptureVideoFrameRateMonitor: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     let queue = DispatchQueue(label: "org.centennialoss.consolation.video-frame-rate-monitor")
+    var onStatsInterval: (@Sendable (CaptureVideoFrameRateStats) -> Void)?
 
     private var frameCount = 0
     private var droppedFrameCount = 0
@@ -39,11 +48,19 @@ nonisolated final class CaptureVideoFrameRateMonitor: NSObject, AVCaptureVideoDa
         let firstTime = firstPresentationTime?.seconds ?? presentationTime.seconds
         let presentationElapsed = presentationTime.seconds - firstTime
         let presentationFPS = presentationElapsed > 0 ? Double(max(frameCount - 1, 0)) / presentationElapsed : 0
+        let stats = CaptureVideoFrameRateStats(
+            wallFPS: wallFPS,
+            presentationFPS: presentationFPS,
+            frames: frameCount,
+            droppedFrames: droppedFrameCount,
+            maxPresentationGap: maxPresentationGap
+        )
         print(
             "Consolation video delivered fps: wall=\(wallFPS), presentation=\(presentationFPS), " +
             "frames=\(frameCount), dropped=\(droppedFrameCount), " +
             "maxPresentationGap=\(maxPresentationGap)"
         )
+        onStatsInterval?(stats)
 
         frameCount = 0
         droppedFrameCount = 0

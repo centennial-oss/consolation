@@ -12,6 +12,7 @@ import AppKit
 final class MacPreviewView: NSView {
     let previewLayer = AVCaptureVideoPreviewLayer()
     var onDoubleClick: () -> Void = {}
+    private var transformObserver: NSObjectProtocol?
 
     override init(frame frameRect: CGRect) {
         super.init(frame: frameRect)
@@ -19,6 +20,19 @@ final class MacPreviewView: NSView {
         layer?.addSublayer(previewLayer)
         previewLayer.videoGravity = .resizeAspect
         previewLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+        transformObserver = NotificationCenter.default.addObserver(
+            forName: CaptureVideoPreviewTransformUserDefaults.changedNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.applyPreviewConnectionSettings()
+        }
+    }
+
+    deinit {
+        if let transformObserver {
+            NotificationCenter.default.removeObserver(transformObserver)
+        }
     }
 
     @available(*, unavailable)
@@ -58,6 +72,37 @@ final class MacPreviewView: NSView {
         CATransaction.commit()
     }
 
+    func applyPreviewConnectionSettings() {
+        guard let connection = previewLayer.connection else { return }
+        let context = activeVideoDeviceContext
+        let transform = CaptureVideoPreviewTransformUserDefaults.load(forDeviceID: context.deviceID)
+        let isHorizontallyMirrored = context.isCamera != transform.mirrors.contains(.horizontal)
+        if connection.isVideoMirroringSupported {
+            connection.automaticallyAdjustsVideoMirroring = false
+            connection.isVideoMirrored = isHorizontallyMirrored
+        }
+        if connection.isVideoRotationAngleSupported(CGFloat(transform.rotation.rawValue)) {
+            connection.videoRotationAngle = CGFloat(transform.rotation.rawValue)
+        }
+        applyLayerMirrorTransform(
+            horizontal: connection.isVideoMirroringSupported ? false : isHorizontallyMirrored,
+            vertical: transform.mirrors.contains(.vertical)
+        )
+    }
+
+    private var activeVideoDeviceContext: CaptureVideoPreviewDeviceContext {
+        CaptureVideoPreviewDeviceContext(session: previewLayer.session)
+    }
+
+    private func applyLayerMirrorTransform(horizontal: Bool, vertical: Bool) {
+        previewLayer.setAffineTransform(
+            CGAffineTransform(
+                scaleX: horizontal ? -1 : 1,
+                y: vertical ? -1 : 1
+            )
+        )
+    }
+
     override func mouseDown(with event: NSEvent) {
         if event.clickCount == 2 {
             onDoubleClick()
@@ -95,6 +140,7 @@ struct CaptureVideoPreview: NSViewRepresentable {
         let view = MacPreviewView(frame: .zero)
         view.previewLayer.session = session
         view.onDoubleClick = onDoubleClick
+        view.applyPreviewConnectionSettings()
         return view
     }
 
@@ -107,6 +153,7 @@ struct CaptureVideoPreview: NSViewRepresentable {
             nsView.previewLayer.session = session
         }
         nsView.onDoubleClick = onDoubleClick
+        nsView.applyPreviewConnectionSettings()
 
         // Force the layer to recalculate its internal projection matrix when the video starts.
         // AVCaptureVideoPreviewLayer has a known bug where it fails to naturally rescale
@@ -119,6 +166,7 @@ struct CaptureVideoPreview: NSViewRepresentable {
                 nsView.previewLayer.frame = .zero
                 nsView.previewLayer.frame = rect
                 CATransaction.commit()
+                nsView.applyPreviewConnectionSettings()
             }
         }
         context.coordinator.wasRunning = isRunning
@@ -136,11 +184,36 @@ final class IOSPreviewView: UIView {
     let previewLayer = AVCaptureVideoPreviewLayer()
     private var previewZoomScale: CGFloat = 1
     private var previewVerticalOffsetRatio: CGFloat = 0
+    private var transformObserver: NSObjectProtocol?
+    private var orientationObserver: NSObjectProtocol?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         clipsToBounds = true
         layer.addSublayer(previewLayer)
+        transformObserver = NotificationCenter.default.addObserver(
+            forName: CaptureVideoPreviewTransformUserDefaults.changedNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.applyPreviewConnectionSettings()
+        }
+        orientationObserver = NotificationCenter.default.addObserver(
+            forName: UIDevice.orientationDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.schedulePreviewConnectionSettingsRefresh()
+        }
+    }
+
+    deinit {
+        if let transformObserver {
+            NotificationCenter.default.removeObserver(transformObserver)
+        }
+        if let orientationObserver {
+            NotificationCenter.default.removeObserver(orientationObserver)
+        }
     }
 
     @available(*, unavailable)
@@ -151,11 +224,13 @@ final class IOSPreviewView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         resizePreviewLayer()
+        applyPreviewConnectionSettings()
     }
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
         applyPreviewConnectionSettings()
+        schedulePreviewConnectionSettingsRefresh()
     }
 
     func setPreviewActive(_ active: Bool, session: AVCaptureSession?) {
@@ -192,22 +267,33 @@ final class IOSPreviewView: UIView {
         CATransaction.commit()
     }
 
-    /// USB capture is not a selfie camera: disable mirroring and let the layer follow the app orientation.
+    /// USB capture feeds are already display-oriented; built-in cameras need interface-orientation correction.
     func applyPreviewConnectionSettings() {
         guard let connection = previewLayer.connection else { return }
+        let context = activeVideoDeviceContext
+        let transform = CaptureVideoPreviewTransformUserDefaults.load(forDeviceID: context.deviceID)
+        let defaultMirrors = defaultMirrorOptions(for: context)
+        let isHorizontallyMirrored = defaultMirrors.contains(.horizontal) != transform.mirrors.contains(.horizontal)
+        let isVerticallyMirrored = defaultMirrors.contains(.vertical) != transform.mirrors.contains(.vertical)
         if connection.isVideoMirroringSupported {
             connection.automaticallyAdjustsVideoMirroring = false
-            connection.isVideoMirrored = false
+            connection.isVideoMirrored = isHorizontallyMirrored
         }
         #if os(iOS)
-        let angle: CGFloat = 0
+        let defaultAngle = context.isUSBVideoCapture ? 0 : previewRotationAngleForCurrentInterfaceOrientation()
+        let angle = normalizedRotationAngle(defaultAngle + CGFloat(transform.rotation.rawValue))
         if connection.isVideoRotationAngleSupported(angle) {
             connection.videoRotationAngle = angle
         } else {
             print("Consolation iOS video: preview rotation angle \(angle) is not supported")
         }
         #endif
+        applyLayerMirrorTransform(
+            horizontal: connection.isVideoMirroringSupported ? false : isHorizontallyMirrored,
+            vertical: isVerticallyMirrored
+        )
     }
+
 }
 
 struct CaptureVideoPreview: UIViewRepresentable {

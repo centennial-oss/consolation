@@ -8,32 +8,27 @@ import SwiftUI
 /// Primary status copy in the idle / overlay card (not the permission education block).
 struct CaptureStatusLine: View {
     let state: CaptureState
-    let isExternalCaptureDeviceConnected: Bool
-    let externalCaptureDeviceName: String?
+    let hasUSBVideoCaptureDevice: Bool
+    let usbVideoCaptureDeviceName: String?
+    let hasAnyVideoDevice: Bool
     let statusMessage: String?
 
     var body: some View {
         switch state {
         case .idle:
-            if isExternalCaptureDeviceConnected {
-                Text("Press Play to connect to the \(externalCaptureDeviceName ?? "USB Video Capture Device")")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            } else {
-                Text("USB Video Capture Device not detected")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
+            idleMessage
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
         case .requestingPermission:
             Text("Connecting...")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         case .noDevice:
-            Text("USB Video Capture Device not detected")
+            noDeviceMessage
                 .font(.callout)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
         case .ready:
             Text("Ready!")
                 .font(.callout)
@@ -53,6 +48,24 @@ struct CaptureStatusLine: View {
                 .font(.callout)
                 .foregroundStyle(.red)
                 .multilineTextAlignment(.center)
+        }
+    }
+
+    private var idleMessage: Text {
+        if hasUSBVideoCaptureDevice {
+            Text("Press Play to connect to the \(usbVideoCaptureDeviceName ?? "USB video capture device").")
+        } else if hasAnyVideoDevice {
+            Text("No USB capture card detected. Choose a camera below, then press Play.")
+        } else {
+            Text("No video input found.")
+        }
+    }
+
+    private var noDeviceMessage: Text {
+        if hasAnyVideoDevice {
+            Text("Video device unavailable. Choose another device below, then press Play.")
+        } else {
+            Text("No video input found.")
         }
     }
 }

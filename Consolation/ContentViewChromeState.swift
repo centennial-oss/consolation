@@ -1,6 +1,15 @@
 import SwiftUI
 
 extension ContentView {
+    var shouldShowStatusLine: Bool {
+        switch capture.state {
+        case .requestingPermission, .failed:
+            return true
+        default:
+            return false
+        }
+    }
+
     func cancelHoverHideTask() {
         hoverTask?.cancel()
         hoverTask = nil

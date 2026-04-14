@@ -1,0 +1,51 @@
+//
+//  CaptureVideoStatsUserDefaults.swift
+//  Consolation
+//
+
+import SwiftUI
+
+enum CaptureVideoStatsOverlayLocation: String, CaseIterable {
+    case bottomLeft
+    case bottomRight
+    case bottomCenter
+    case topLeft
+    case topRight
+    case topCenter
+
+    static var menuLocations: [CaptureVideoStatsOverlayLocation] {
+        #if os(iOS)
+        allCases.filter { $0 != .bottomCenter }
+        #else
+        allCases
+        #endif
+    }
+
+    var menuTitle: String {
+        switch self {
+        case .bottomLeft: "Bottom Left"
+        case .bottomRight: "Bottom Right"
+        case .bottomCenter: "Bottom Center"
+        case .topLeft: "Top Left"
+        case .topRight: "Top Right"
+        case .topCenter: "Top Center"
+        }
+    }
+
+    var alignment: Alignment {
+        switch self {
+        case .bottomLeft: .bottomLeading
+        case .bottomRight: .bottomTrailing
+        case .bottomCenter: .bottom
+        case .topLeft: .topLeading
+        case .topRight: .topTrailing
+        case .topCenter: .top
+        }
+    }
+}
+
+enum CaptureVideoStatsUserDefaults {
+    nonisolated static let showStatsKey = "org.centennialoss.consolation.showVideoStatsOverlay"
+    nonisolated static let statsLocationKey = "org.centennialoss.consolation.videoStatsOverlayLocation"
+    nonisolated static let defaultLocation = CaptureVideoStatsOverlayLocation.bottomLeft.rawValue
+}

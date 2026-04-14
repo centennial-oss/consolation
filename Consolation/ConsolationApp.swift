@@ -33,13 +33,17 @@ extension Notification.Name {
 @main
 struct ConsolationApp: App {
     @StateObject private var captureSession = CaptureSessionManager()
-
-    #if os(macOS)
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @AppStorage(CaptureAudioUserDefaults.isMutedKey) private var isAudioMuted = false
     @AppStorage(CaptureAudioUserDefaults.volumeLevelKey) private var volumeLevel = 1.0
     @AppStorage(CaptureAudioUserDefaults.bufferLengthKey) private var audioBufferLength =
         CaptureAudioUserDefaults.defaultBufferLength
+    @AppStorage(CaptureVideoStatsUserDefaults.showStatsKey) private var showVideoStats = false
+    @AppStorage(CaptureVideoStatsUserDefaults.statsLocationKey) private var videoStatsLocationRawValue =
+        CaptureVideoStatsUserDefaults.defaultLocation
+    @State private var previewTransformMenuRefresh = 0
+
+    #if os(macOS)
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     #elseif os(iOS)
     @UIApplicationDelegateAdaptor(IOSAppOrientationDelegate.self) var iosOrientationDelegate
     #endif
@@ -53,10 +57,14 @@ struct ConsolationApp: App {
         #endif
         #if os(macOS)
         .windowStyle(.hiddenTitleBar)
+        #endif
         .commands {
+            #if os(macOS)
             CommandGroup(replacing: .newItem) {}
+            #endif
             CommandGroup(after: .toolbar) {
-                Section("Playback Size") {
+                #if os(macOS)
+                Menu("Resize Window") {
                     Button(".5x") {
                         NotificationCenter.default.post(name: .playbackSizeCommand, object: CGFloat(0.5))
                     }
@@ -68,6 +76,34 @@ struct ConsolationApp: App {
                     }
                 }
                 .disabled(captureSession.state != .running)
+                Divider()
+                #endif
+
+                Menu("Video Stats") {
+                    videoStatsMenuOption(title: "Off", location: nil)
+                    ForEach(CaptureVideoStatsOverlayLocation.menuLocations, id: \.rawValue) { location in
+                        videoStatsMenuOption(title: location.menuTitle, location: location)
+                    }
+                }
+                Menu("Rotation") {
+                    ForEach(CaptureVideoPreviewRotation.allCases, id: \.rawValue) { rotation in
+                        previewRotationOption(rotation)
+                    }
+                }
+                Menu("Mirror Image") {
+                    previewMirrorOption(title: "Horizontal", mirror: .horizontal)
+                    previewMirrorOption(title: "Vertical", mirror: .vertical)
+                }
+                Divider()
+                Button(captureSession.state == .running ? "Stop Capturing" : "Start Capturing") {
+                    if captureSession.state == .running {
+                        captureSession.stopWatching()
+                    } else {
+                        Task { await captureSession.startWatching() }
+                    }
+                }
+                .disabled(captureSession.state != .running && !captureSession.canStartWatching)
+                Divider()
             }
             CommandMenu("Audio") {
                 Section("Volume Level") {
@@ -90,17 +126,15 @@ struct ConsolationApp: App {
 
                 Divider()
 
-                Section("Buffer Length") {
+                Section("Buffer Size") {
                     ForEach(CaptureAudioUserDefaults.bufferLengthOptions, id: \.self) { length in
                         audioBufferLengthOption(length)
                     }
                 }
             }
         }
-        #endif
     }
 
-    #if os(macOS)
     @ViewBuilder
     private func audioVolumeOption(label: String, level: Double) -> some View {
         Button {
@@ -113,6 +147,86 @@ struct ConsolationApp: App {
         } label: {
             Text(label)
         }
+    }
+
+    @ViewBuilder
+    private func videoStatsMenuOption(title: String, location: CaptureVideoStatsOverlayLocation?) -> some View {
+        let isSelected = isVideoStatsOptionSelected(location: location)
+        Button {
+            if let location {
+                showVideoStats = true
+                videoStatsLocationRawValue = location.rawValue
+            } else {
+                showVideoStats = false
+            }
+        } label: {
+            if isSelected {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
+            }
+        }
+        .disabled(captureSession.state != .running)
+    }
+
+    private func isVideoStatsOptionSelected(location: CaptureVideoStatsOverlayLocation?) -> Bool {
+        switch (showVideoStats, location) {
+        case (false, nil):
+            return true
+        case (true, let selected?):
+            return videoStatsLocationRawValue == selected.rawValue
+        default:
+            return false
+        }
+    }
+
+    private func previewRotationOption(_ rotation: CaptureVideoPreviewRotation) -> some View {
+        _ = previewTransformMenuRefresh
+        let transform = CaptureVideoPreviewTransformUserDefaults.load(
+            forDeviceID: captureSession.selectedVideoDeviceUniqueID
+        )
+        return Button {
+            CaptureVideoPreviewTransformUserDefaults.saveRotation(
+                rotation,
+                forDeviceID: captureSession.selectedVideoDeviceUniqueID
+            )
+            previewTransformMenuRefresh += 1
+        } label: {
+            if transform.rotation == rotation {
+                Label(rotation.menuTitle, systemImage: "checkmark")
+            } else {
+                Text(rotation.menuTitle)
+            }
+        }
+        .disabled(captureSession.selectedVideoDeviceUniqueID == nil)
+    }
+
+    private func previewMirrorOption(title: String, mirror: CaptureVideoPreviewMirrorOptions) -> some View {
+        _ = previewTransformMenuRefresh
+        let transform = CaptureVideoPreviewTransformUserDefaults.load(
+            forDeviceID: captureSession.selectedVideoDeviceUniqueID
+        )
+        let isSelected = transform.mirrors.contains(mirror)
+        return Button {
+            var mirrors = transform.mirrors
+            if isSelected {
+                mirrors.remove(mirror)
+            } else {
+                mirrors.insert(mirror)
+            }
+            CaptureVideoPreviewTransformUserDefaults.saveMirrors(
+                mirrors,
+                forDeviceID: captureSession.selectedVideoDeviceUniqueID
+            )
+            previewTransformMenuRefresh += 1
+        } label: {
+            if isSelected {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
+            }
+        }
+        .disabled(captureSession.selectedVideoDeviceUniqueID == nil)
     }
 
     @ViewBuilder
@@ -131,5 +245,4 @@ struct ConsolationApp: App {
             }
         }
     }
-    #endif
 }

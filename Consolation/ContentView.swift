@@ -22,6 +22,10 @@ struct ContentView: View {
     #if os(iOS)
     @State var isClassicAspectFillEnabled = false
     #endif
+    @AppStorage(CaptureVideoStatsUserDefaults.showStatsKey) var showVideoStats = false
+    @AppStorage(CaptureVideoStatsUserDefaults.statsLocationKey) var videoStatsLocationRawValue =
+        CaptureVideoStatsUserDefaults.defaultLocation
+    @State var latestVideoFrameRateStats: CaptureVideoFrameRateStats?
 
     #if DEBUG
     @State private var showDeviceDebug = false
@@ -29,28 +33,7 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack {
-                Color.black
-                    .ignoresSafeArea()
-
-                CaptureVideoPreview(
-                    session: capture.session,
-                    isRunning: capture.state == .running,
-                    isClassicAspectFillEnabled: isIPadClassicAspectFillActive
-                ) {
-                    #if os(macOS)
-                    zoomWindowToVideoAspectIfPossible()
-                    #endif
-                }
-                    .ignoresSafeArea()
-
-                if !isUIHidden {
-                    viewerChrome
-                        .transition(.opacity)
-                }
-            }
-            .onAppear { setPreviewSize(proxy.size) }
-            .onChange(of: proxy.size) { _, size in setPreviewSize(size) }
+            previewStack(in: proxy)
         }
         .frame(minWidth: 480, minHeight: 270)
         .background {
@@ -67,6 +50,7 @@ struct ContentView: View {
             PlaybackDisplayWakeLock.setActive(state == .running)
             if state != .running {
                 cancelAutoHideChrome()
+                latestVideoFrameRateStats = nil
             }
             if oldState != .running, state == .running {
                 #if os(macOS)
@@ -126,6 +110,7 @@ struct ContentView: View {
             guard let scale = notification.object as? CGFloat else { return }
             resizeWindowToPlaybackScale(scale)
         }
+        #endif
         .onReceive(NotificationCenter.default.publisher(for: .audioMuteToggleCommand)) { notification in
             guard let muted = notification.object as? Bool else { return }
             capture.setAudioMuted(muted)
@@ -138,7 +123,10 @@ struct ContentView: View {
             guard let length = notification.object as? Int else { return }
             capture.setAudioBufferLength(length)
         }
-        #endif
+        .onReceive(capture.videoFrameRateStatsPublisher) { stats in
+            guard showVideoStats else { return }
+            latestVideoFrameRateStats = stats
+        }
         .background {
             Button("") {
                 if capture.state == .running {
@@ -150,40 +138,7 @@ struct ContentView: View {
         }
         #if os(macOS)
         .background {
-            Group {
-                Button("") {
-                    handleSpaceOrKPlaybackShortcut()
-                }
-                .keyboardShortcut(.space, modifiers: [])
-                .hidden()
-
-                Button("") {
-                    handleSpaceOrKPlaybackShortcut()
-                }
-                .keyboardShortcut("k", modifiers: [])
-                .hidden()
-
-                Button("") {
-                    guard let window else { return }
-                    if window.styleMask.contains(.fullScreen) {
-                        window.toggleFullScreen(nil)
-                    }
-                }
-                .keyboardShortcut(.cancelAction)
-                .hidden()
-
-                Button("") {
-                    window?.toggleFullScreen(nil)
-                }
-                .keyboardShortcut("f", modifiers: [])
-                .hidden()
-
-                Button("") {
-                    zoomWindowToVideoAspectIfPossible()
-                }
-                .keyboardShortcut("z", modifiers: [])
-                .hidden()
-            }
+            macOSHiddenPlaybackShortcuts
         }
         #endif
         #if DEBUG
@@ -201,6 +156,36 @@ struct ContentView: View {
 }
 
 extension ContentView {
+    @ViewBuilder
+    fileprivate func previewStack(in proxy: GeometryProxy) -> some View {
+        ZStack {
+            Color.black
+                .ignoresSafeArea()
+
+            CaptureVideoPreview(
+                session: capture.session,
+                isRunning: capture.state == .running,
+                isClassicAspectFillEnabled: isIPadClassicAspectFillActive
+            ) {
+                #if os(macOS)
+                zoomWindowToVideoAspectIfPossible()
+                #endif
+            }
+            .ignoresSafeArea()
+
+            if shouldShowStatsOverlay, let statsLabel = videoStatsLabel {
+                statsOverlay(statsLabel)
+            }
+
+            if !isUIHidden {
+                viewerChrome
+                    .transition(.opacity)
+            }
+        }
+        .onAppear { setPreviewSize(proxy.size) }
+        .onChange(of: proxy.size) { _, size in setPreviewSize(size) }
+    }
+
     var viewerChrome: some View {
         VStack {
             Spacer()
@@ -218,55 +203,21 @@ extension ContentView {
     }
 
     var statusPanel: some View {
-        VStack(spacing: 16) {
-            CaptureStatusLine(
-                state: capture.state,
-                isExternalCaptureDeviceConnected: capture.isExternalCaptureDeviceConnected,
-                externalCaptureDeviceName: capture.externalCaptureDeviceName,
-                statusMessage: capture.statusMessage
-            )
-
-            if capture.mediaPermissionNotice != .none,
-               capture.state != .requestingPermission {
-                CaptureMediaPermissionEducationNotice(notice: capture.mediaPermissionNotice)
+        ContentViewStatusPanelChrome(capture: capture, showStatusLine: shouldShowStatusLine)
+            .padding()
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(.quaternary, lineWidth: 1)
             }
-
-            if canStartWatching {
-                PlaybackToolbarIconButton(
-                    systemName: "play.fill",
-                    accessibilityLabel: "Start Watching",
-                    dimension: 72,
-                    action: { Task { await capture.startWatching() } }
-                )
-                .keyboardShortcut(.defaultAction)
-                .disabled(capture.state == .requestingPermission)
-            }
-        }
-        .padding()
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(.quaternary, lineWidth: 1)
-        }
-        .shadow(radius: 10)
-        .panelLiquidGlass(cornerRadius: 16)
+            .shadow(radius: 10)
+            .panelLiquidGlass(cornerRadius: 16)
     }
 
     var statusRequiresInteraction: Bool {
         switch capture.state {
         case .running: return false
         default: return true
-        }
-    }
-
-    var canStartWatching: Bool {
-        guard capture.isExternalCaptureDeviceConnected else { return false }
-
-        switch capture.state {
-        case .ready, .idle, .noDevice:
-            return true
-        case .requestingPermission, .running, .failed:
-            return false
         }
     }
 
@@ -349,7 +300,7 @@ extension ContentView {
     func handleSpaceOrKPlaybackShortcut() {
         if capture.state == .running {
             capture.stopWatching()
-        } else if canStartWatching, capture.state != .requestingPermission {
+        } else if capture.canStartWatching, capture.state != .requestingPermission {
             Task { await capture.startWatching() }
         }
     }
@@ -386,4 +337,44 @@ extension ContentView {
         }
     }
 
+}
+
+private struct ContentViewStatusPanelChrome: View {
+    @ObservedObject var capture: CaptureSessionManager
+    let showStatusLine: Bool
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Consolation")
+                .font(.system(size: 42, weight: .bold))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+            Divider()
+
+            if showStatusLine {
+                CaptureStatusLine(
+                    state: capture.state,
+                    hasUSBVideoCaptureDevice: !capture.usbCaptureDeviceEntries.isEmpty,
+                    usbVideoCaptureDeviceName: capture.primaryUSBVideoCaptureDisplayName,
+                    hasAnyVideoDevice: !capture.hasNoVideoDevices,
+                    statusMessage: capture.statusMessage
+                )
+            }
+
+            if capture.mediaPermissionNotice != .none,
+               capture.state != .requestingPermission {
+                CaptureMediaPermissionEducationNotice(notice: capture.mediaPermissionNotice)
+            }
+
+            if !capture.hasNoVideoDevices {
+                ContentViewConnectPanel(capture: capture)
+            }
+
+            if capture.canStartWatching {
+                Divider()
+                ContentViewStartWatchingButton(capture: capture)
+            }
+        }
+        .frame(maxWidth: 540)
+    }
 }
