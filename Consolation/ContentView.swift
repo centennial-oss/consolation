@@ -16,6 +16,7 @@ struct ContentView: View {
     @State var playbackControlsOffset = CGSize.zero
     @State var playbackControlsSize = CGSize.zero
     @State var previewSize = CGSize.zero
+    @State private var isShowingAbout = false
     @State var isPlaybackControlsInteractionActive = false
     @State var isPlaybackControlsHoverActive = false
     @GestureState private var playbackControlsDragOffset = CGSize.zero
@@ -126,6 +127,17 @@ struct ContentView: View {
         .onReceive(capture.videoFrameRateStatsPublisher) { stats in
             guard showVideoStats else { return }
             latestVideoFrameRateStats = stats
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showAboutCommand)) { _ in
+            isShowingAbout = true
+        }
+        .sheet(isPresented: $isShowingAbout) {
+            AboutConsolationView {
+                isShowingAbout = false
+            }
+            #if os(macOS)
+            .interactiveDismissDisabled()
+            #endif
         }
         .background {
             Button("") {
@@ -345,10 +357,17 @@ private struct ContentViewStatusPanelChrome: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Text("Consolation")
-                .font(.system(size: 42, weight: .bold))
-                .foregroundStyle(.white)
-                .multilineTextAlignment(.center)
+            HStack(spacing: 12) {
+                appIcon
+                    .resizable()
+                    .frame(width: 52, height: 52)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                Text(BuildInfo.appName)
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+            }
             Divider()
 
             if showStatusLine {
@@ -376,5 +395,13 @@ private struct ContentViewStatusPanelChrome: View {
             }
         }
         .frame(maxWidth: 540)
+    }
+
+    private var appIcon: Image {
+        #if os(macOS)
+        Image(nsImage: NSApp.applicationIconImage)
+        #else
+        Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
+        #endif
     }
 }

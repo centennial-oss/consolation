@@ -99,6 +99,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = D32ED71B2F8B8CB000B6A9BA /* Build configuration list for PBXNativeTarget "Consolation" */;
 			buildPhases = (
+				D42BF0010000000000000001 /* Generate BuildInfo */,
 				D32ED6F62F8B8CAF00B6A9BA /* Sources */,
 				D32ED6F72F8B8CAF00B6A9BA /* Frameworks */,
 				D32ED6F82F8B8CAF00B6A9BA /* Resources */,
@@ -230,6 +231,30 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		D42BF0010000000000000001 /* Generate BuildInfo */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/scripts/generate-build-info.sh",
+			);
+			name = "Generate BuildInfo";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Consolation/BuildInfo.generated.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "sh scripts/generate-build-info.sh Consolation/BuildInfo.generated.swift\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		D32ED6F62F8B8CAF00B6A9BA /* Sources */ = {

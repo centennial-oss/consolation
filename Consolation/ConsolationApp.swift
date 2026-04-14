@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #endif
 
 extension Notification.Name {
+    static let showAboutCommand = Notification.Name("org.centennialoss.consolation.showAboutCommand")
     static let audioMuteToggleCommand = Notification.Name("org.centennialoss.consolation.audioMuteToggleCommand")
     static let audioVolumeLevelCommand = Notification.Name("org.centennialoss.consolation.audioVolumeLevelCommand")
     static let audioBufferLengthCommand = Notification.Name("org.centennialoss.consolation.audioBufferLengthCommand")
@@ -61,6 +62,11 @@ struct ConsolationApp: App {
         .commands {
             #if os(macOS)
             CommandGroup(replacing: .newItem) {}
+            CommandGroup(replacing: .appInfo) {
+                Button("About \(BuildInfo.appName)") {
+                    NotificationCenter.default.post(name: .showAboutCommand, object: nil)
+                }
+            }
             #endif
             CommandGroup(after: .toolbar) {
                 #if os(macOS)
