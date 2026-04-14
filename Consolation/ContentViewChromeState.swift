@@ -29,6 +29,46 @@ extension ContentView {
         cancelHoverHideTask()
         revealTransientChromeIfNeeded()
     }
+
+    /// Auto-hide overlays and traffic-light dimming only apply while actively watching.
+    func resetHoverTimer() {
+        #if os(macOS)
+        guard !isAppMenuTracking else {
+            cancelHoverHideTask()
+            revealTransientChromeIfNeeded()
+            return
+        }
+        #endif
+
+        guard !isPlaybackControlsInteractionActive, !isPlaybackControlsHoverActive else {
+            cancelHoverHideTask()
+            revealTransientChromeIfNeeded()
+            return
+        }
+
+        guard capture.state == .running else {
+            cancelAutoHideChrome()
+            return
+        }
+
+        cancelHoverHideTask()
+        revealTransientChromeIfNeeded()
+
+        hoverTask = Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard capture.state == .running else { return }
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    isUIHidden = true
+                }
+                #if os(macOS)
+                window?.standardWindowButton(.closeButton)?.superview?.animator().alphaValue = 0.0
+                NSCursor.setHiddenUntilMouseMoves(true)
+                #endif
+            }
+        }
+    }
 }
 
 #Preview {

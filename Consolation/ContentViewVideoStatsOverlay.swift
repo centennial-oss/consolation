@@ -13,6 +13,14 @@ extension ContentView {
 
     var statsFontSize: CGFloat { 13 }
 
+    var isStatsOverlayFullscreenActive: Bool {
+        #if os(macOS)
+        isFullscreenActive
+        #else
+        false
+        #endif
+    }
+
     var videoStatsLabel: String? {
         guard let stats = latestVideoFrameRateStats else { return nil }
         let resolution = resolutionLabel
@@ -57,15 +65,16 @@ extension ContentView {
                 .font(.system(size: statsFontSize, weight: .medium, design: .monospaced))
                 .foregroundStyle(.white)
                 .lineLimit(1)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.gray.opacity(0.72), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .frame(maxHeight: 21)
+                .background(Color.gray.opacity(0.9), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
                 }
         }
-        .padding(16)
+        .padding(resolvedStatsLocation.edgePadding(isFullscreen: isStatsOverlayFullscreenActive))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: resolvedStatsLocation.alignment)
         .allowsHitTesting(false)
     }

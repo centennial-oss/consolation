@@ -19,6 +19,9 @@ struct ContentView: View {
     @State private var isShowingAbout = false
     @State var isPlaybackControlsInteractionActive = false
     @State var isPlaybackControlsHoverActive = false
+    #if os(macOS)
+    @State var isAppMenuTracking = false
+    #endif
     @GestureState private var playbackControlsDragOffset = CGSize.zero
     #if os(iOS)
     @State var isClassicAspectFillEnabled = false
@@ -110,6 +113,15 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .playbackSizeCommand)) { notification in
             guard let scale = notification.object as? CGFloat else { return }
             resizeWindowToPlaybackScale(scale)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSMenu.didBeginTrackingNotification)) { _ in
+            isAppMenuTracking = true
+            cancelHoverHideTask()
+            revealTransientChromeIfNeeded()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSMenu.didEndTrackingNotification)) { _ in
+            isAppMenuTracking = false
+            resetHoverTimer()
         }
         #endif
         .onReceive(NotificationCenter.default.publisher(for: .audioMuteToggleCommand)) { notification in
@@ -317,37 +329,6 @@ extension ContentView {
         }
     }
 
-    /// Auto-hide overlays and traffic-light dimming only apply while actively watching.
-    func resetHoverTimer() {
-        guard !isPlaybackControlsInteractionActive, !isPlaybackControlsHoverActive else {
-            cancelHoverHideTask()
-            revealTransientChromeIfNeeded()
-            return
-        }
-
-        guard capture.state == .running else {
-            cancelAutoHideChrome()
-            return
-        }
-
-        cancelHoverHideTask()
-        revealTransientChromeIfNeeded()
-
-        hoverTask = Task {
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            guard !Task.isCancelled else { return }
-            await MainActor.run {
-                guard capture.state == .running else { return }
-                withAnimation(.easeInOut(duration: 0.5)) {
-                    isUIHidden = true
-                }
-                #if os(macOS)
-                window?.standardWindowButton(.closeButton)?.superview?.animator().alphaValue = 0.0
-                NSCursor.setHiddenUntilMouseMoves(true)
-                #endif
-            }
-        }
-    }
 }
 
 private struct ContentViewStatusPanelChrome: View {

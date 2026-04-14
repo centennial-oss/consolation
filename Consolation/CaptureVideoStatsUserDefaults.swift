@@ -42,6 +42,19 @@ enum CaptureVideoStatsOverlayLocation: String, CaseIterable {
         case .topCenter: .top
         }
     }
+
+    func edgePadding(isFullscreen: Bool) -> EdgeInsets {
+        let topPadding: CGFloat = isFullscreen ? 2 : -30
+
+        return switch self {
+        case .topLeft:
+            EdgeInsets(top: topPadding, leading: 2, bottom: 2, trailing: 0)
+        case .topRight, .topCenter:
+            EdgeInsets(top: topPadding, leading: 0, bottom: 2, trailing: 2)
+        case .bottomLeft, .bottomRight, .bottomCenter:
+            EdgeInsets(top: 0, leading: 2, bottom: 2, trailing: 2)
+        }
+    }
 }
 
 enum CaptureVideoStatsUserDefaults {
