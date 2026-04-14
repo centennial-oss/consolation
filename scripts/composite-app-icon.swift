@@ -31,8 +31,8 @@ guard let bgImage = NSImage(contentsOfFile: bgPath),
 
 let bgWidth = 1024.0
 let bgHeight = 1024.0
-let fgSize = 860.0
-let fgYOffsetAboveCenter = 20.0
+let fgSize = 920.0
+let fgYOffsetAboveCenter = -12.0
 let width = Int(bgWidth)
 let height = Int(bgHeight)
 

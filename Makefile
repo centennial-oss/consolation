@@ -69,13 +69,12 @@ test: lint
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED_DATA) -destination 'platform=macOS' test CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
 
 # Generate app icon assets:
-#   1. Draw assets/app-icon-large-transparent.png
-#   2. Composite it over assets/app-icon-background-large.png -> assets/app-icon-large.png
-#   3. Resize the composite into the AppIcon asset catalog for macOS and iOS.
+#   1. Composite assets/app-icon-large-transparent.png over assets/app-icon-background-large.png
+#      -> assets/app-icon-large.png
+#   2. Resize the composite into the AppIcon asset catalog for macOS and iOS.
 generate-appicons:
 	@test -f $(APPICON_BG) || (echo "Missing: $(APPICON_BG)" && exit 1)
-	@echo "Drawing app-icon-large-transparent.png"
-	@swift scripts/draw-app-icon-foreground.swift $(APPICON_TRANSPARENT_SRC)
+	@test -f $(APPICON_TRANSPARENT_SRC) || (echo "Missing: $(APPICON_TRANSPARENT_SRC)" && exit 1)
 	@echo "Compositing app-icon-large-transparent.png onto app-icon-background-large.png -> app-icon-large.png"
 	@swift scripts/composite-app-icon.swift $(APPICON_BG) $(APPICON_TRANSPARENT_SRC) $(APPICON_LARGE)
 	@cp $(APPICON_LARGE) $(APPICON_SRC)

@@ -25,13 +25,27 @@
 
 /* Begin PBXFileReference section */
 		D32ED6FA2F8B8CAF00B6A9BA /* Consolation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Consolation.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D32ED7242F8B8CB000B6A9BA /* Consolation/Version.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Consolation/Version.xcconfig; sourceTree = SOURCE_ROOT; };
 		D32ED7072F8B8CB000B6A9BA /* ConsolationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ConsolationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D32ED7112F8B8CB000B6A9BA /* ConsolationUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ConsolationUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D32ED7252F8B8CB000B6A9BA /* Exceptions for "Consolation" folder in "Consolation" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Version.xcconfig,
+			);
+			target = D32ED6F92F8B8CAF00B6A9BA /* Consolation */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D32ED6FC2F8B8CAF00B6A9BA /* Consolation */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D32ED7252F8B8CB000B6A9BA /* Exceptions for "Consolation" folder in "Consolation" target */,
+			);
 			path = Consolation;
 			sourceTree = "<group>";
 		};
@@ -79,6 +93,7 @@
 				D32ED70A2F8B8CB000B6A9BA /* ConsolationTests */,
 				D32ED7142F8B8CB000B6A9BA /* ConsolationUITests */,
 				D32ED6FB2F8B8CAF00B6A9BA /* Products */,
+				D32ED7262F8B8CB000B6A9BA /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -92,6 +107,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		D32ED7262F8B8CB000B6A9BA /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				D32ED7242F8B8CB000B6A9BA /* Consolation/Version.xcconfig */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -99,7 +122,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = D32ED71B2F8B8CB000B6A9BA /* Build configuration list for PBXNativeTarget "Consolation" */;
 			buildPhases = (
-				D42BF0010000000000000001 /* Generate BuildInfo */,
 				D32ED6F62F8B8CAF00B6A9BA /* Sources */,
 				D32ED6F72F8B8CAF00B6A9BA /* Frameworks */,
 				D32ED6F82F8B8CAF00B6A9BA /* Resources */,
@@ -231,30 +253,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		D42BF0010000000000000001 /* Generate BuildInfo */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/scripts/generate-build-info.sh",
-			);
-			name = "Generate BuildInfo";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(SRCROOT)/Consolation/BuildInfo.generated.swift",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "sh scripts/generate-build-info.sh Consolation/BuildInfo.generated.swift\n";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		D32ED6F62F8B8CAF00B6A9BA /* Sources */ = {
@@ -412,11 +410,11 @@
 		};
 		D32ED71C2F8B8CB000B6A9BA /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D32ED7242F8B8CB000B6A9BA /* Consolation/Version.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 86G4NP75W9;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -451,7 +449,6 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.centennialoss.consolation;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -469,11 +466,11 @@
 		};
 		D32ED71D2F8B8CB000B6A9BA /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D32ED7242F8B8CB000B6A9BA /* Consolation/Version.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 86G4NP75W9;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -508,7 +505,6 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.centennialoss.consolation;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;

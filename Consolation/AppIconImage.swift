@@ -19,7 +19,12 @@ struct AppIconImage: View {
 
     private var appIcon: Image {
         #if os(macOS)
-        Image(nsImage: NSApp.applicationIconImage)
+        if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let iconImage = NSImage(contentsOf: iconURL) {
+            Image(nsImage: iconImage)
+        } else {
+            Image(nsImage: NSApp.applicationIconImage)
+        }
         #else
         Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
         #endif
