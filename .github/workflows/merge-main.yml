@@ -1,0 +1,41 @@
+name: Merge to Main
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-test-release:
+    if: github.repository_owner == 'centennial-oss'
+    runs-on: macos-15
+    env:
+      APP_NAME: Consolation
+      SCHEME_NAME: Consolation
+      PROJECT_PATH: Consolation.xcodeproj
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: 'latest-stable'
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Generate build info for CI
+        run: |
+          COMMIT="${{ github.sha }}" \
+          DATE="$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")" \
+          CONFIG="Debug" \
+          ARCH="arm64" \
+          make generate-build-info
+
+      - name: Run clean, test, and build-release-unsigned
+        run: |
+          make clean test build-release-unsigned
+
