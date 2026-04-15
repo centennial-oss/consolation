@@ -114,8 +114,12 @@ jobs:
             exit 1
           fi
           # Cert names are always prefixed with these strings (e.g. "3rd Party Mac Developer Application: Name (TEAM)")
-          if ! grep -F "3rd Party Mac Developer Application" codesign-identities.txt > /dev/null; then
-            echo "::error::No 3rd Party Mac Developer Application identity found in imported certificates."
+          if grep -F "Apple Distribution" codesign-identities.txt > /dev/null; then
+            echo "MAC_APP_STORE_SIGNING_CERTIFICATE=Apple Distribution" >> "$GITHUB_ENV"
+          elif grep -F "3rd Party Mac Developer Application" codesign-identities.txt > /dev/null; then
+            echo "MAC_APP_STORE_SIGNING_CERTIFICATE=3rd Party Mac Developer Application" >> "$GITHUB_ENV"
+          else
+            echo "::error::No Apple Distribution or 3rd Party Mac Developer Application identity found in imported certificates."
             exit 1
           fi
           if ! grep -F "3rd Party Mac Developer Installer" all-identities.txt > /dev/null; then
@@ -274,7 +278,7 @@ jobs:
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             PROVISIONING_PROFILE="$MAC_APP_STORE_PROFILE_UUID" \
             CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="3rd Party Mac Developer Application"
+            CODE_SIGN_IDENTITY="$MAC_APP_STORE_SIGNING_CERTIFICATE"
 
       - name: Export and upload Mac App Store package to App Store Connect
         env:
@@ -284,12 +288,11 @@ jobs:
         run: |
           # signingStyle=manual: sign locally with the certs imported into the keychain,
           # not via cloud signing (which requires elevated API key permissions).
-          # Prefix matches cert names like "3rd Party Mac Developer Application: Name (TEAM)"
           /usr/libexec/PlistBuddy \
             -c "Add :method string app-store-connect" \
             -c "Add :destination string upload" \
             -c "Add :signingStyle string manual" \
-            -c "Add :signingCertificate string 3rd Party Mac Developer Application" \
+            -c "Add :signingCertificate string $MAC_APP_STORE_SIGNING_CERTIFICATE" \
             -c "Add :installerSigningCertificate string 3rd Party Mac Developer Installer" \
             -c "Add :provisioningProfiles dict" \
             -c "Add :provisioningProfiles:org.centennialoss.consolation string $MAC_APP_STORE_PROFILE_UUID" \
