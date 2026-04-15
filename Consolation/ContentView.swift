@@ -209,6 +209,10 @@ extension ContentView {
         ZStack {
             viewerBackground
 
+            // IMPT: Keep this preview view mounted even while idle. On macOS, `CaptureVideoPreview`
+            // owns the `AVCaptureVideoPreviewLayer`; creating/attaching that layer only after
+            // the session starts caused UVC capture devices to fall back to ~25 FPS. The stable
+            // sequence is: preview layer exists, layer has the session, then the session starts.
             CaptureVideoPreview(
                 session: capture.session,
                 isRunning: capture.state == .running,
