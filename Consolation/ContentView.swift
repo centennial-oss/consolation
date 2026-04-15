@@ -209,27 +209,16 @@ extension ContentView {
         ZStack {
             viewerBackground
 
-            if capture.state == .running {
-                CaptureVideoPreview(
-                    session: capture.session,
-                    isRunning: true,
-                    isClassicAspectFillEnabled: isIPadClassicAspectFillActive
-                ) {
-                    #if os(macOS)
-                    zoomWindowToVideoAspectIfPossible()
-                    #endif
-                }
-                .ignoresSafeArea()
+            CaptureVideoPreview(
+                session: capture.session,
+                isRunning: capture.state == .running,
+                isClassicAspectFillEnabled: isIPadClassicAspectFillActive
+            ) {
+                #if os(macOS)
+                zoomWindowToVideoAspectIfPossible()
+                #endif
             }
-
-            #if os(macOS)
-            if capture.state != .running {
-                WindowDragSurface {
-                    zoomWindowToVideoAspectIfPossible()
-                }
-                    .ignoresSafeArea()
-            }
-            #endif
+            .ignoresSafeArea()
 
             if shouldShowStatsOverlay, let statsLabel = videoStatsLabel {
                 statsOverlay(statsLabel)
