@@ -30,6 +30,7 @@ struct ContentView: View {
     @AppStorage(CaptureVideoStatsUserDefaults.showStatsKey) var showVideoStats = false
     @AppStorage(CaptureVideoStatsUserDefaults.statsLocationKey) var videoStatsLocationRawValue =
         CaptureVideoStatsUserDefaults.defaultLocation
+    @AppStorage(CaptureVideoStatsUserDefaults.disableLowFPSWarningKey) var disableLowFPSWarningOverlay = false
     @State var latestVideoFrameRateStats: CaptureVideoFrameRateStats?
     @State var lowMaxFPSWarningPollCount = 0
     @State var isShowingMaxFPSInfo = false

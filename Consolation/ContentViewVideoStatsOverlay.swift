@@ -34,7 +34,9 @@ extension ContentView {
     }
 
     var shouldShowMaxFPSWarning: Bool {
-        capture.state == .running && lowMaxFPSWarningPollCount >= maxFPSWarningPollThreshold
+        capture.state == .running &&
+            !disableLowFPSWarningOverlay &&
+            lowMaxFPSWarningPollCount >= maxFPSWarningPollThreshold
     }
 
     var maxFPSWarningLabel: String? {

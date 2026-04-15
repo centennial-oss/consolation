@@ -60,5 +60,6 @@ enum CaptureVideoStatsOverlayLocation: String, CaseIterable {
 enum CaptureVideoStatsUserDefaults {
     nonisolated static let showStatsKey = AppIdentifier.scoped("showVideoStatsOverlay")
     nonisolated static let statsLocationKey = AppIdentifier.scoped("videoStatsOverlayLocation")
+    nonisolated static let disableLowFPSWarningKey = AppIdentifier.scoped("disableLowFPSWarningOverlay")
     nonisolated static let defaultLocation = CaptureVideoStatsOverlayLocation.bottomLeft.rawValue
 }

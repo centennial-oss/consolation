@@ -42,6 +42,7 @@ struct ConsolationApp: App {
     @AppStorage(CaptureVideoStatsUserDefaults.showStatsKey) private var showVideoStats = false
     @AppStorage(CaptureVideoStatsUserDefaults.statsLocationKey) private var videoStatsLocationRawValue =
         CaptureVideoStatsUserDefaults.defaultLocation
+    @AppStorage(CaptureVideoStatsUserDefaults.disableLowFPSWarningKey) private var disableLowFPSWarningOverlay = false
     @State private var previewTransformMenuRefresh = 0
 
     #if os(macOS)
@@ -81,19 +82,20 @@ struct ConsolationApp: App {
             }
             CommandGroup(after: .toolbar) {
                 #if os(macOS)
-                Menu("Resize Window") {
-                    Button(".5x") {
-                        NotificationCenter.default.post(name: .playbackSizeCommand, object: CGFloat(0.5))
+                if captureSession.state == .running {
+                    Menu("Resize Window") {
+                        Button(".5x") {
+                            NotificationCenter.default.post(name: .playbackSizeCommand, object: CGFloat(0.5))
+                        }
+                        Button("1x") {
+                            NotificationCenter.default.post(name: .playbackSizeCommand, object: CGFloat(1))
+                        }
+                        Button("2x") {
+                            NotificationCenter.default.post(name: .playbackSizeCommand, object: CGFloat(2))
+                        }
                     }
-                    Button("1x") {
-                        NotificationCenter.default.post(name: .playbackSizeCommand, object: CGFloat(1))
-                    }
-                    Button("2x") {
-                        NotificationCenter.default.post(name: .playbackSizeCommand, object: CGFloat(2))
-                    }
+                    Divider()
                 }
-                .disabled(captureSession.state != .running)
-                Divider()
                 #endif
 
                 Menu("Video Stats") {
@@ -120,6 +122,16 @@ struct ConsolationApp: App {
                     }
                 }
                 .disabled(captureSession.state != .running && !captureSession.canStartWatching)
+                Divider()
+                Button {
+                    disableLowFPSWarningOverlay.toggle()
+                } label: {
+                    if disableLowFPSWarningOverlay {
+                        Label("Suppress Low FPS Warnings", systemImage: "checkmark")
+                    } else {
+                        Text("Suppress Low FPS Warnings")
+                    }
+                }
                 Divider()
             }
             CommandMenu("Audio") {
