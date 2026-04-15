@@ -136,9 +136,46 @@ jobs:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
         run: |
+          set -euo pipefail
           mkdir -p ~/private_keys
-          echo "$APP_STORE_CONNECT_API_KEY" | base64 --decode \
+          printf '%s' "$APP_STORE_CONNECT_API_KEY" | base64 --decode \
             > ~/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+
+      - name: Validate App Store Connect API key file
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+        run: |
+          set -euo pipefail
+          KEY_PATH="$HOME/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+
+          test -s "$KEY_PATH" || { echo "::error::Decoded API key file is empty."; exit 1; }
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import sys
+          import re
+
+          key_dir = Path.home() / "private_keys"
+          files = list(key_dir.glob("AuthKey_*.p8"))
+          if len(files) != 1:
+              print("::error::Expected exactly one AuthKey_*.p8 file.")
+              sys.exit(1)
+
+          data = files[0].read_bytes()
+
+          checks = [
+              (data.startswith(b"-----BEGIN PRIVATE KEY-----\n") or data.startswith(b"-----BEGIN PRIVATE KEY-----\r\n"), "missing PEM header"),
+              (data.rstrip().endswith(b"-----END PRIVATE KEY-----"), "missing PEM footer"),
+              (b"\x00" not in data, "contains NUL byte(s)"),
+              (len(data) > 100, "unexpectedly short PEM file"),
+          ]
+          for ok, msg in checks:
+              if not ok:
+                  print(f"::error::Decoded API key file invalid: {msg}")
+                  sys.exit(1)
+
+          print("API key file passed non-secret structural validation.")
+          PY
 
       - name: Install Mac App Store provisioning profile
         env:
