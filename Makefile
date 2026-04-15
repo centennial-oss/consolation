@@ -16,6 +16,7 @@ APPICON_SIZES := 16 32 64 128 256 512
 APPICON_BG := assets/app-icon-background-large.png
 APPICON_TRANSPARENT_SRC := assets/app-icon-large-transparent.png
 APPICON_LARGE := assets/app-icon-large.png
+APPICON_PREVIEW := assets/app-icon.png
 BUILD_INFO := Consolation/BuildInfo.generated.swift
 
 COMMIT ?= $(shell git rev-parse HEAD 2>/dev/null || echo local)
@@ -87,6 +88,7 @@ test: lint
 #   1. Composite assets/app-icon-large-transparent.png over assets/app-icon-background-large.png
 #      -> assets/app-icon-large.png
 #   2. Resize the composite into the AppIcon asset catalog for macOS and iOS.
+#   3. Copy the generated 128x128 icon to assets/app-icon.png for docs/branding use.
 generate-appicons:
 	@test -f $(APPICON_BG) || (echo "Missing: $(APPICON_BG)" && exit 1)
 	@test -f $(APPICON_TRANSPARENT_SRC) || (echo "Missing: $(APPICON_TRANSPARENT_SRC)" && exit 1)
@@ -105,8 +107,9 @@ generate-appicons:
 			sips -z $$size $$size --out $(APPICON_DIR)/AppIcon_$$size.png $(APPICON_SRC); \
 		fi; \
 	done
+	@cp $(APPICON_DIR)/AppIcon_128.png $(APPICON_PREVIEW)
 	@rm -f /tmp/AppIcon_crop.png
-	@echo "Done writing AppIcons"
+	@echo "Done writing AppIcons and $(APPICON_PREVIEW)"
 
 reset-perms:
 	@tccutil reset Camera $(BUNDLE_ID)
