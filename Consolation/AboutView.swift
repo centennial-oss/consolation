@@ -138,7 +138,8 @@ struct AboutConsolationView: View {
                 .font(.system(size: 14, design: .monospaced))
                 .textSelection(.enabled)
                 .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Button(didCopyBuildInfo ? "✓ Copied" : "Copy to Clipboard") {
