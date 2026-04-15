@@ -34,6 +34,6 @@ struct ContentViewStartWatchingButton: View {
         .buttonStyle(.plain)
         .keyboardShortcut(.defaultAction)
         .disabled(!capture.canStartWatching)
-        .accessibilityLabel("Start Capturing")
+        .accessibilityLabel("Start Video")
     }
 }

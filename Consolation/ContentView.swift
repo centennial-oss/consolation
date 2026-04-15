@@ -34,6 +34,9 @@ struct ContentView: View {
     @State var latestVideoFrameRateStats: CaptureVideoFrameRateStats?
     @State var lowMaxFPSWarningPollCount = 0
     @State var isShowingMaxFPSInfo = false
+    #if os(macOS)
+    @AppStorage(ViewerWindowUserDefaults.isAlwaysOnTopKey) var isViewerWindowAlwaysOnTop = false
+    #endif
     #if DEBUG
     @State private var showDeviceDebug = false
     #endif
@@ -47,6 +50,14 @@ struct ContentView: View {
             WindowAccessor(window: $window)
             #endif
         }
+        #if os(macOS)
+        .onChange(of: window) { _, _ in
+            updateAlwaysOnTopWindowLevel()
+        }
+        .onChange(of: isViewerWindowAlwaysOnTop) { _, _ in
+            updateAlwaysOnTopWindowLevel()
+        }
+        #endif
         .onChange(of: capture.videoSize) { _, size in
             #if os(macOS)
             updateWindowAspectRatio(for: size)

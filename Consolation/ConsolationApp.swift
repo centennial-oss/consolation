@@ -44,6 +44,9 @@ struct ConsolationApp: App {
         CaptureVideoStatsUserDefaults.defaultLocation
     @AppStorage(CaptureVideoStatsUserDefaults.disableLowFPSWarningKey) private var disableLowFPSWarningOverlay = false
     @State private var previewTransformMenuRefresh = 0
+    #if os(macOS)
+    @AppStorage(ViewerWindowUserDefaults.isAlwaysOnTopKey) private var isViewerWindowAlwaysOnTop = false
+    #endif
 
     #if os(macOS)
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -113,8 +116,20 @@ struct ConsolationApp: App {
                     previewMirrorOption(title: "Horizontal", mirror: .horizontal)
                     previewMirrorOption(title: "Vertical", mirror: .vertical)
                 }
+                #if os(macOS)
                 Divider()
-                Button(captureSession.state == .running ? "Stop Capturing" : "Start Capturing") {
+                Button {
+                    isViewerWindowAlwaysOnTop.toggle()
+                } label: {
+                    if isViewerWindowAlwaysOnTop {
+                        Label("Always on Top", systemImage: "checkmark")
+                    } else {
+                        Text("Always on Top")
+                    }
+                }
+                #endif
+                Divider()
+                Button(captureSession.state == .running ? "Stop Video" : "Start Video") {
                     if captureSession.state == .running {
                         captureSession.stopWatching()
                     } else {

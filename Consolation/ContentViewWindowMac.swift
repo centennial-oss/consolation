@@ -10,6 +10,10 @@ import AppKit
 
 private let mainViewerMinimumContentSize = NSSize(width: 640, height: 480)
 
+enum ViewerWindowUserDefaults {
+    nonisolated static let isAlwaysOnTopKey = AppIdentifier.scoped("viewerWindowAlwaysOnTop")
+}
+
 struct WindowAccessor: NSViewRepresentable {
     @Binding var window: NSWindow?
 
@@ -95,6 +99,10 @@ extension ContentView {
             .keyboardShortcut("z", modifiers: [])
             .hidden()
         }
+    }
+
+    func updateAlwaysOnTopWindowLevel() {
+        window?.level = isViewerWindowAlwaysOnTop ? .floating : .normal
     }
 
     /// Double-click and **Z**: fit the window to the video aspect in the visible screen.
