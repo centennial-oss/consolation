@@ -28,6 +28,6 @@ struct ContentViewStartWatchingButton: View {
         .buttonStyle(.plain)
         .keyboardShortcut(.defaultAction)
         .disabled(!capture.canStartWatching)
-        .accessibilityLabel("Start Watching")
+        .accessibilityLabel("Start Capturing")
     }
 }

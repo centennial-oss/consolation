@@ -39,7 +39,7 @@ extension ContentView {
         HStack(spacing: 20) {
             PlaybackToolbarIconButton(
                 systemName: "power",
-                accessibilityLabel: "Stop Watching",
+                accessibilityLabel: "Stop Capturing",
                 iconColor: .red,
                 hoverTint: .white,
                 action: { capture.stopWatching() }

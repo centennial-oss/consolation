@@ -6,7 +6,7 @@ Consolation is coming soon to the App Store. Release downloads will also be avai
 
 ## About
 
-Consolation is a free app that enables your Mac or iPad to be used as a screen for devices like gaming consoles, Raspberry Pis, and even a Mac Mini, via a standard USB Video Class (UVC) video capture card.
+Consolation is a free app that enables your Mac or iPad to be used as a screen for devices like gaming consoles, Raspberry Pis, and even a Mac mini, via a standard USB Video Class (UVC) video capture card.
 
 The app is intentionally simple: watch the live feed in a window or full screen. No recording or saving, no streaming to the internet. Just plug and play, privately with no ads or tracking.
 
@@ -26,8 +26,8 @@ Consolation is confirmed to work with these specific devices:
 
 - Elgato HD60 X
 - acer USB 3.0 Video Capture Card (model OCB5B0)
-- UGREEN Full HD 1080P Capture Card (model 40189)
-- WANKEDA 4K Capture Card 1080P 60FPS for Streaming (1da603d4)
+- UGREEN Full HD 1080p Capture Card (model 40189)
+- WANKEDA 4K Capture Card 1080p 60FPS for Streaming (1da603d4)
 
 ## Requirements
 
