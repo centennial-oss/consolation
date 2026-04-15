@@ -30,6 +30,34 @@ struct WindowAccessor: NSViewRepresentable {
     }
 }
 
+struct WindowDragSurface: NSViewRepresentable {
+    let onDoubleClick: () -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = WindowDragNSView()
+        view.onDoubleClick = onDoubleClick
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard let view = nsView as? WindowDragNSView else { return }
+        view.onDoubleClick = onDoubleClick
+    }
+}
+
+private final class WindowDragNSView: NSView {
+    var onDoubleClick: () -> Void = {}
+
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 {
+            onDoubleClick()
+            return
+        }
+
+        window?.performDrag(with: event)
+    }
+}
+
 extension ContentView {
     @ViewBuilder
     var macOSHiddenPlaybackShortcuts: some View {

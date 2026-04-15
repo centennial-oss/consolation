@@ -21,18 +21,18 @@ struct CaptureStatusLine: View {
     private var statusLine: (message: String, color: Color) {
         switch state {
         case .idle:
-            return (idleMessage, .secondary)
+            return (idleMessage, Color.primary.opacity(0.65))
         case .requestingPermission:
-            return ("Connecting...", .secondary)
+            return ("Connecting...", Color.primary.opacity(0.65))
         case .noDevice:
-            return (noDeviceMessage, .secondary)
+            return (noDeviceMessage, Color.primary.opacity(0.65))
         case .ready:
-            return ("Ready!", .secondary)
+            return ("Ready!", Color.primary.opacity(0.65))
         case .running:
             if let name = statusMessage {
-                return ("Connected: \(name)", .secondary)
+                return ("Connected: \(name)", Color.primary.opacity(0.65))
             }
-            return ("Connected", .secondary)
+            return ("Connected", Color.primary.opacity(0.65))
         case .failed(let message):
             return (message, .red)
         }

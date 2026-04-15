@@ -18,8 +18,14 @@ struct ContentViewStartWatchingButton: View {
                     .fill(Color.white.opacity(0.16))
                 Image(systemName: "play.fill")
                     .font(.system(size: 36, weight: .semibold))
-                    .foregroundStyle(isHovered ? Color.accentColor : Color.white)
+                    .foregroundStyle(Color.white)
                     .allowsHitTesting(false)
+            }
+            .overlay {
+                if isHovered {
+                    Circle()
+                        .strokeBorder(Color.white.opacity(0.88), lineWidth: 1)
+                }
             }
             .frame(width: 72, height: 72)
             .contentShape(Circle())

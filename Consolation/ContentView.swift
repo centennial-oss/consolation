@@ -196,18 +196,30 @@ extension ContentView {
     @ViewBuilder
     fileprivate func previewStack(in proxy: GeometryProxy) -> some View {
         ZStack {
-            Color.black
+            viewerBackground
+
+            if capture.state == .running {
+                CaptureVideoPreview(
+                    session: capture.session,
+                    isRunning: true,
+                    isClassicAspectFillEnabled: isIPadClassicAspectFillActive
+                ) {
+                    #if os(macOS)
+                    zoomWindowToVideoAspectIfPossible()
+                    #endif
+                }
                 .ignoresSafeArea()
-            CaptureVideoPreview(
-                session: capture.session,
-                isRunning: capture.state == .running,
-                isClassicAspectFillEnabled: isIPadClassicAspectFillActive
-            ) {
-                #if os(macOS)
-                zoomWindowToVideoAspectIfPossible()
-                #endif
             }
-            .ignoresSafeArea()
+
+            #if os(macOS)
+            if capture.state != .running {
+                WindowDragSurface {
+                    zoomWindowToVideoAspectIfPossible()
+                }
+                    .ignoresSafeArea()
+            }
+            #endif
+
             if shouldShowStatsOverlay, let statsLabel = videoStatsLabel {
                 statsOverlay(statsLabel)
             }
@@ -221,6 +233,25 @@ extension ContentView {
         }
         .onAppear { setPreviewSize(proxy.size) }
         .onChange(of: proxy.size) { _, size in setPreviewSize(size) }
+    }
+
+    @ViewBuilder
+    var viewerBackground: some View {
+        if capture.state == .running {
+            Color.black
+                .ignoresSafeArea()
+        } else {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.55, green: 0.02, blue: 0.45),
+                    Color(red: 0.28, green: 0.01, blue: 0.19),
+                    Color.black
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        }
     }
 
     var viewerChrome: some View {

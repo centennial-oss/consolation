@@ -1,7 +1,7 @@
 //
 //  ContentViewHeaderUtilityButton.swift
 //  Consolation
-//-
+//
 
 import SwiftUI
 
@@ -10,6 +10,16 @@ struct ContentViewHeaderUtilityButton: View {
     let systemImage: String
     let action: () -> Void
     @State private var isHovered = false
+
+    init(
+        title: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.systemImage = systemImage
+        self.action = action
+    }
 
     var body: some View {
         Button(action: action) {
@@ -22,7 +32,10 @@ struct ContentViewHeaderUtilityButton: View {
                 .background(Color.white.opacity(0.08), in: Capsule())
                 .overlay {
                     Capsule()
-                        .strokeBorder(isHovered ? Color.accentColor : Color.white.opacity(0.16), lineWidth: 1)
+                        .strokeBorder(
+                            Color.white.opacity(isHovered ? 1 : 0.16),
+                            lineWidth: 1
+                        )
                 }
         }
         .buttonStyle(.plain)

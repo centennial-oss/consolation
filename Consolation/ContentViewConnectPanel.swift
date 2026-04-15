@@ -28,9 +28,9 @@ struct ContentViewConnectPanel: View {
                 .foregroundStyle(.white)
             HStack(spacing: 8) {
                 Menu {
-                    Section("Capture devices") {
+                    Section("Video Capture Cards") {
                         if capture.usbCaptureDeviceEntries.isEmpty {
-                            Text("Capture Card Not Detected")
+                            Text("     No Capture Cards Detected")
                                 .foregroundStyle(.secondary)
                         } else {
                             ForEach(capture.usbCaptureDeviceEntries) { entry in
