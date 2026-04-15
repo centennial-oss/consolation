@@ -91,31 +91,37 @@ jobs:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
           set -euo pipefail
-          # Code-signing identities (Developer ID, Apple/3rd-party distribution app certs)
           security find-identity -v -p codesigning build.keychain | tee codesign-identities.txt
-          # All identities including installer/package certs (not returned by -p codesigning)
           security find-identity -v build.keychain | tee all-identities.txt
           echo "--- codesigning identities ---"
           cat codesign-identities.txt
           echo "--- all identities ---"
           cat all-identities.txt
+
           if ! grep -F "$APPLE_SIGNING_IDENTITY" codesign-identities.txt > /dev/null; then
             echo "::error::APPLE_SIGNING_IDENTITY not found in build.keychain: $APPLE_SIGNING_IDENTITY"
             exit 1
           fi
-          if ! grep -E "Developer ID Application" codesign-identities.txt > /dev/null; then
+
+          if ! grep -F "Developer ID Application" codesign-identities.txt > /dev/null; then
             echo "::error::No Developer ID Application identity found in imported certificates."
             exit 1
           fi
-          # Cert names are always prefixed with these strings (e.g. "3rd Party Mac Developer Application: Name (TEAM)")
-          if ! grep -F "3rd Party Mac Developer Application" codesign-identities.txt > /dev/null; then
-            echo "::error::No 3rd Party Mac Developer Application identity found in imported certificates."
+
+          if grep -F "Apple Distribution" codesign-identities.txt > /dev/null; then
+            echo "MAC_APP_STORE_SIGNING_CERTIFICATE=Apple Distribution" >> "$GITHUB_ENV"
+          elif grep -F "3rd Party Mac Developer Application" codesign-identities.txt > /dev/null; then
+            echo "MAC_APP_STORE_SIGNING_CERTIFICATE=3rd Party Mac Developer Application" >> "$GITHUB_ENV"
+          else
+            echo "::error::No Apple Distribution or 3rd Party Mac Developer Application identity found in imported certificates."
             exit 1
           fi
+
           if ! grep -F "3rd Party Mac Developer Installer" all-identities.txt > /dev/null; then
             echo "::error::No 3rd Party Mac Developer Installer identity found in imported certificates."
             exit 1
           fi
+
           if grep -F "Apple Distribution" codesign-identities.txt > /dev/null; then
             echo "IOS_APP_STORE_SIGNING_CERTIFICATE=Apple Distribution" >> "$GITHUB_ENV"
           elif grep -F "iPhone Distribution" codesign-identities.txt > /dev/null; then
@@ -186,8 +192,6 @@ jobs:
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          # Manual signing with pre-installed provisioning profile (required for TestFlight).
-          # Profile is installed in "Install Mac App Store provisioning profile" step.
           xcodebuild archive \
             -scheme ${{ env.SCHEME_NAME }} \
             -configuration Release \
@@ -197,26 +201,22 @@ jobs:
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             PROVISIONING_PROFILE="$MAC_APP_STORE_PROFILE_UUID" \
             CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="3rd Party Mac Developer Application"
+            CODE_SIGN_IDENTITY="$MAC_APP_STORE_SIGNING_CERTIFICATE"
 
       - name: Export Mac App Store package preflight (no upload)
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          # signingStyle=manual: sign locally with the certs imported into the keychain,
-          # not via cloud signing (which requires elevated API key permissions).
-          # Prefix matches cert names like "3rd Party Mac Developer Application: Name (TEAM)"
           /usr/libexec/PlistBuddy \
             -c "Add :method string app-store-connect" \
             -c "Add :destination string export" \
             -c "Add :signingStyle string manual" \
-            -c "Add :signingCertificate string 3rd Party Mac Developer Application" \
+            -c "Add :signingCertificate string $MAC_APP_STORE_SIGNING_CERTIFICATE" \
             -c "Add :installerSigningCertificate string 3rd Party Mac Developer Installer" \
             -c "Add :provisioningProfiles dict" \
             -c "Add :provisioningProfiles:org.centennialoss.consolation string $MAC_APP_STORE_PROFILE_UUID" \
             -c "Add :teamID string $APPLE_TEAM_ID" \
             /tmp/ExportOptions-Mac-preflight.plist
-          # -allowProvisioningUpdates not needed: the archive already has the profile embedded.
           xcodebuild -exportArchive \
             -archivePath ${{ env.MAC_ARCHIVE_PATH }} \
             -exportPath ${{ env.MAC_EXPORT_PATH }} \
@@ -240,7 +240,6 @@ jobs:
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          # The app target is iPad-only via TARGETED_DEVICE_FAMILY=2.
           xcodebuild archive \
             -scheme ${{ env.SCHEME_NAME }} \
             -configuration Release \
