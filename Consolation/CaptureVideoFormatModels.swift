@@ -18,8 +18,12 @@ struct CaptureVideoFormatMenuResolution: Identifiable, Hashable, Sendable {
 }
 
 enum CaptureVideoFormatDisplayStrings: Sendable {
+    nonisolated static func resolutionLabel(width: Int, height: Int) -> String {
+        "\(width)×\(height)"
+    }
+
     nonisolated static func resolutionAndFrameLabel(width: Int, height: Int, frameRate: Double) -> String {
-        "\(width)×\(height) @ \(Int(round(frameRate)))p"
+        "\(resolutionLabel(width: width, height: height)) @ \(Int(round(frameRate)))p"
     }
 }
 
@@ -53,6 +57,11 @@ enum CaptureVideoFormatMenuRates: Sendable {
                 bestByRoundedFPS[roundedFPS] = rate
             }
         }
-        return bestByRoundedFPS.keys.sorted(by: >).compactMap { bestByRoundedFPS[$0] }
+        return bestByRoundedFPS
+            .sorted {
+                if $0.key != $1.key { return $0.key > $1.key }
+                return $0.value > $1.value
+            }
+            .map(\.value)
     }
 }

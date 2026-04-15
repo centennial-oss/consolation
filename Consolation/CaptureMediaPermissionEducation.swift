@@ -39,33 +39,43 @@ struct CaptureMediaPermissionEducationNotice: View {
             case .none:
                 EmptyView()
             case .notDetermined:
-                Text(
-                    """
-                    When you press Play, you'll be asked to allow Camera and Microphone access.
-                    These permissions are required because macOS treats Capture Cards as Webcams.
-                    """
+                #if os(macOS)
+                permissionText(
+                    "You will be asked to allow Camera and Microphone access, which\n" +
+                    "is required because macOS treats Capture Cards as Webcams."
                 )
+                #else
+                permissionText(
+                    "You will be asked to allow Camera and Microphone access, which\n" +
+                    "is required because iPad treats Capture Cards as Webcams."
+                )
+                #endif
                 Divider()
             case .deniedOrRestricted:
-                deniedOrRestrictedCopy
+                #if os(macOS)
+                permissionText(
+                    "Camera or Mic access for Consolation is disabled in Settings. Enable both under "
+                        + "Privacy & Security so your capture device can be used, then restart the app.",
+                    color: .red
+                )
+                #else
+                permissionText(
+                    "Camera or Mic access for Consolation is off in Settings. Enable both under "
+                        + "Privacy & Security so your capture device can be used.",
+                    color: .red
+                )
+                #endif
+                Divider()
             }
         }
-        .multilineTextAlignment(.center)
     }
 
-    @ViewBuilder
-    private var deniedOrRestrictedCopy: some View {
-        #if os(macOS)
-        Text(
-            "Camera or Microphone access for Consolation is off in System Settings. macOS treats USB "
-                + "capture like a webcam: enable Camera and Microphone for Consolation under "
-                + "Privacy & Security to use your device's picture and sound."
-        )
-        #else
-        Text(
-            "Camera or Microphone access for Consolation is off in Settings. Enable both under "
-                + "Privacy so your capture device's video and audio can be used."
-        )
-        #endif
+    private func permissionText(_ message: String, color: Color = .secondary) -> some View {
+        Text(message)
+            .font(.system(size: 15))
+            .foregroundStyle(color)
+            .lineSpacing(4)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }

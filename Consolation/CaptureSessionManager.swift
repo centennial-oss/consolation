@@ -65,7 +65,7 @@ final class CaptureSessionManager: ObservableObject {
     var lastLoggedVideoCapabilitiesSignature: String?
 
     /// Resolved before each `startWatching`; published so the connect panel updates labels and checkmarks.
-    @Published private(set) var formatPreferences: CaptureVideoFormatPreferences
+    @Published var formatPreferences: CaptureVideoFormatPreferences
 
     /// Pass `nil` to load the built-in default today, and later persisted values.
     init(formatPreferences: CaptureVideoFormatPreferences? = nil) {
@@ -78,7 +78,6 @@ final class CaptureSessionManager: ObservableObject {
             guard let self else { return }
             await self.backend.setVideoStatsUpdateHandler { [weak self] stats in
                 guard let self else { return }
-                guard UserDefaults.standard.bool(forKey: CaptureVideoStatsUserDefaults.showStatsKey) else { return }
                 Task { @MainActor in
                     self.videoFrameRateStatsPublisher.send(stats)
                 }
@@ -107,17 +106,21 @@ final class CaptureSessionManager: ObservableObject {
     func selectVideoDevice(uniqueID: String) {
         selectedVideoDeviceUniqueID = uniqueID
         CaptureVideoDeviceUserDefaults.saveSelectedDeviceUniqueID(uniqueID)
+        applyFormatPreferencesForSelectedDevice(uniqueID: uniqueID)
         exitFailedConnectStateAfterUserChangedSelection()
     }
 
     func selectVideoFormat(width: Int, height: Int, frameRate: Double) {
-        formatPreferences = CaptureVideoFormatPreferences(
-            minimumFrameRate: formatPreferences.minimumFrameRate,
-            preferredPixelWidth: width,
-            preferredPixelHeight: height,
-            preferredFrameRate: frameRate
-        )
+        formatPreferences = formatPreferences.withPreferredFormat(width: width, height: height, frameRate: frameRate)
         formatPreferences.saveToStorage()
+        if let deviceID = selectedVideoDeviceUniqueID {
+            CaptureVideoFormatUserDefaults.savePreferredFormat(
+                width: width,
+                height: height,
+                frameRate: frameRate,
+                forDeviceID: deviceID
+            )
+        }
         exitFailedConnectStateAfterUserChangedSelection()
     }
 
@@ -160,8 +163,9 @@ final class CaptureSessionManager: ObservableObject {
         return "Default"
     }
 
-    /// Same rules as the in-app Start Watching control; used by menu commands and shortcuts.
-    var canStartWatching: Bool {
+    var canStartWatching: Bool { shouldShowStartWatchingButton && mediaPermissionNotice != .deniedOrRestricted }
+
+    var shouldShowStartWatchingButton: Bool {
         guard !hasNoVideoDevices else { return false }
         switch state {
         case .ready, .idle, .noDevice:
@@ -195,7 +199,7 @@ final class CaptureSessionManager: ObservableObject {
 
         let granted = await CaptureSessionMediaAccess.requestCameraAccessIfNeeded()
         guard granted else {
-            state = .failed("Camera access is required to show the capture feed.")
+            state = .failed("Camera access is required to use this app.")
             statusMessage = "Allow camera access in Settings to continue."
             return
         }

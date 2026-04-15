@@ -14,58 +14,52 @@ struct CaptureStatusLine: View {
     let statusMessage: String?
 
     var body: some View {
+        let status = statusLine
+        statusText(status.message, color: status.color)
+    }
+
+    private var statusLine: (message: String, color: Color) {
         switch state {
         case .idle:
-            idleMessage
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            return (idleMessage, .secondary)
         case .requestingPermission:
-            Text("Connecting...")
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            return ("Connecting...", .secondary)
         case .noDevice:
-            noDeviceMessage
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            return (noDeviceMessage, .secondary)
         case .ready:
-            Text("Ready!")
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            return ("Ready!", .secondary)
         case .running:
             if let name = statusMessage {
-                Text("Connected: \(name)")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("Connected")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                return ("Connected: \(name)", .secondary)
             }
+            return ("Connected", .secondary)
         case .failed(let message):
-            Text(message)
-                .font(.callout)
-                .foregroundStyle(.red)
-                .multilineTextAlignment(.center)
+            return (message, .red)
         }
     }
 
-    private var idleMessage: Text {
+    private var idleMessage: String {
         if hasUSBVideoCaptureDevice {
-            Text("Press Play to connect to the \(usbVideoCaptureDeviceName ?? "USB video capture device").")
+            "Press Play to connect to the \(usbVideoCaptureDeviceName ?? "USB video capture device")."
         } else if hasAnyVideoDevice {
-            Text("No USB capture card detected. Choose a camera below, then press Play.")
+            "No USB capture card detected. Choose a camera below, then press Play."
         } else {
-            Text("No video input found.")
+            "No video input found."
         }
     }
 
-    private var noDeviceMessage: Text {
+    private var noDeviceMessage: String {
         if hasAnyVideoDevice {
-            Text("Video device unavailable. Choose another device below, then press Play.")
+            "Video device unavailable. Choose another device below, then press Play."
         } else {
-            Text("No video input found.")
+            "No video input found."
         }
+    }
+
+    private func statusText(_ message: String, color: Color) -> some View {
+        Text(message)
+            .font(.system(size: 20))
+            .foregroundStyle(color)
+            .multilineTextAlignment(.center)
     }
 }

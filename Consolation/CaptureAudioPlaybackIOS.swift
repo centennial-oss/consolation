@@ -13,12 +13,12 @@ extension CaptureAudioPlayback {
         guard !isMuted() else { return }
 
         guard let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer) else {
-            print("Consolation iOS audio: sample buffer missing format description")
+            logIOSAudioMissingFormatDescription()
             return
         }
         let sourceFormat = AVAudioFormat(cmAudioFormatDescription: formatDesc)
         guard sourceFormat.channelCount > 0, sourceFormat.sampleRate > 0 else {
-            print("Consolation iOS audio: invalid source format \(sourceFormat)")
+            logIOSAudioInvalidSourceFormat(sourceFormat)
             return
         }
 
@@ -38,7 +38,7 @@ extension CaptureAudioPlayback {
                 didWireEngine = true
                 wiredIOSPlayFormat = playFormat
             } catch {
-                print("Consolation iOS audio: failed to start engine: \(error)")
+                logIOSAudioFailedToStartEngine(error)
                 engineWireLock.unlock()
                 return
             }
@@ -51,11 +51,38 @@ extension CaptureAudioPlayback {
             sourceFormat: sourceFormat,
             playFormat: playFormat
         ) else {
-            print("Consolation iOS audio: failed to convert sample buffer from \(sourceFormat) to \(playFormat)")
+            logIOSAudioFailedToConvert(sourceFormat: sourceFormat, playFormat: playFormat)
             return
         }
 
         schedulePCMBuffer(pcmBuffer)
+    }
+
+    nonisolated private func logIOSAudioMissingFormatDescription() {
+        #if DEBUG
+        print("\(BuildInfo.appName) iOS audio: sample buffer missing format description")
+        #endif
+    }
+
+    nonisolated private func logIOSAudioInvalidSourceFormat(_ sourceFormat: AVAudioFormat) {
+        #if DEBUG
+        print("\(BuildInfo.appName) iOS audio: invalid source format \(sourceFormat)")
+        #endif
+    }
+
+    nonisolated private func logIOSAudioFailedToStartEngine(_ error: Error) {
+        #if DEBUG
+        print("\(BuildInfo.appName) iOS audio: failed to start engine: \(error)")
+        #endif
+    }
+
+    nonisolated private func logIOSAudioFailedToConvert(sourceFormat: AVAudioFormat, playFormat: AVAudioFormat) {
+        #if DEBUG
+        print(
+            "\(BuildInfo.appName) iOS audio: failed to convert sample buffer " +
+            "from \(sourceFormat) to \(playFormat)"
+        )
+        #endif
     }
 
     /// `AVAudioEngine` start/stop/attach must run on the main thread on iOS; capture callbacks do not.

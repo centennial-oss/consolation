@@ -9,7 +9,10 @@ struct AboutConsolationView: View {
     let onClose: () -> Void
 
     private let githubURL = URL(string: "https://github.com/centennial-oss/consolation")!
-    private let appStoreReviewURL = URL(string: "https://google.com")!
+    private let appStoreReviewURL = URL(
+        string: "https://apps.apple.com/us/app/\(BuildInfo.appName.lowercased())/" +
+            "id\(AppIdentifier.appStoreID)?action=write-review"
+    )!
 
     @State private var isGitHubLinkHovered = false
     @State private var isAppStoreLinkHovered = false

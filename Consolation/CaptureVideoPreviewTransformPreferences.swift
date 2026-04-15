@@ -41,12 +41,10 @@ struct CaptureVideoPreviewTransform: Equatable, Sendable {
 
 enum CaptureVideoPreviewTransformUserDefaults {
     nonisolated static let changedNotification =
-        Notification.Name("org.centennialoss.consolation.videoPreviewTransformChanged")
+        Notification.Name(AppIdentifier.scoped("videoPreviewTransformChanged"))
 
-    private nonisolated static let rotationPrefix =
-        "org.centennialoss.consolation.videoPreviewRotation"
-    private nonisolated static let mirrorPrefix =
-        "org.centennialoss.consolation.videoPreviewMirror"
+    private nonisolated static let rotationPrefix = AppIdentifier.scoped("videoPreviewRotation")
+    private nonisolated static let mirrorPrefix = AppIdentifier.scoped("videoPreviewMirror")
 
     static func load(forDeviceID deviceID: String?) -> CaptureVideoPreviewTransform {
         guard let deviceID else { return .default }

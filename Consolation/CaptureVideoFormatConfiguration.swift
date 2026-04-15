@@ -1,42 +1,16 @@
-//
-//  CaptureVideoFormatConfiguration.swift
-//  Consolation
-//
-//  User-tunable capture format goals.
-//
-    //  Auto-selection strategy:
-    //    1. Keep only formats whose max frame rate meets `minimumFrameRate` (default 60 Hz).
-    //    2. Among those, pick the highest max frame rate.
-    //    3. Among formats with that frame rate, pick the highest pixel count (resolution).
-    //
-    //  This means 1080p@120 beats 1440p@60, but 1440p@60 beats 1080p@60.
-//  Later: expose `minimumFrameRate` (and an explicit override) via Settings / UserDefaults
-//  without changing call sites — keep `CaptureSessionManager.formatPreferences` as the
-//  single injection point.
-//
-
 @preconcurrency import AVFoundation
 import Foundation
 
 private enum CaptureVideoFormatUserDefaultsKeys {
-    nonisolated static let minimumFrameRateKey = "org.centennialoss.consolation.captureVideoMinimumFrameRate"
-    nonisolated static let preferredWidthKey = "org.centennialoss.consolation.captureVideoPreferredWidth"
-    nonisolated static let preferredHeightKey = "org.centennialoss.consolation.captureVideoPreferredHeight"
-    nonisolated static let preferredFrameRateKey = "org.centennialoss.consolation.captureVideoPreferredFrameRate"
+    nonisolated static let minimumFrameRateKey = AppIdentifier.scoped("captureVideoMinimumFrameRate")
+    nonisolated static let preferredWidthKey = AppIdentifier.scoped("captureVideoPreferredWidth")
+    nonisolated static let preferredHeightKey = AppIdentifier.scoped("captureVideoPreferredHeight")
+    nonisolated static let preferredFrameRateKey = AppIdentifier.scoped("captureVideoPreferredFrameRate")
 }
 
-// MARK: - Preferences (future UserDefaults / settings)
-
-/// Goals for automatic video format selection.
-/// Replace `defaultForLaunch` sourcing with persisted values when settings UI ships.
 struct CaptureVideoFormatPreferences: Sendable, Equatable {
-    /// The minimum frame rate a format must support to be considered for auto-selection.
-    /// Formats whose max frame rate falls below this threshold are ignored entirely,
-    /// even if they offer a higher resolution (e.g. 4K@30 is excluded when this is 60).
     var minimumFrameRate: Double
 
-    /// When set together with height and frame rate, applies this mode when the device supports it;
-    /// otherwise selection falls back to automatic `bestFormat`.
     var preferredPixelWidth: Int?
     var preferredPixelHeight: Int?
     var preferredFrameRate: Double?
@@ -45,7 +19,6 @@ struct CaptureVideoFormatPreferences: Sendable, Equatable {
         preferredPixelWidth != nil && preferredPixelHeight != nil && preferredFrameRate != nil
     }
 
-    /// Built-in default until a settings store provides overrides.
     nonisolated static let defaultForLaunch = CaptureVideoFormatPreferences(
         minimumFrameRate: 60,
         preferredPixelWidth: nil,
@@ -90,13 +63,23 @@ struct CaptureVideoFormatPreferences: Sendable, Equatable {
             defaults.set(0.0, forKey: CaptureVideoFormatUserDefaultsKeys.preferredFrameRateKey)
         }
     }
+
+    nonisolated func withPreferredFormat(
+        width: Int?,
+        height: Int?,
+        frameRate: Double?
+    ) -> CaptureVideoFormatPreferences {
+        let triple = width != nil && height != nil && frameRate != nil
+        return CaptureVideoFormatPreferences(
+            minimumFrameRate: minimumFrameRate,
+            preferredPixelWidth: triple ? width : nil,
+            preferredPixelHeight: triple ? height : nil,
+            preferredFrameRate: triple ? frameRate : nil
+        )
+    }
 }
 
-// MARK: - Selection + apply
-
 enum CaptureFormatSelector: Sendable {
-    /// Selects the best format and locks the frame duration to its highest supported rate.
-    /// Caller must hold `device.lockForConfiguration()` before calling.
     nonisolated static func applyPreferredFormat(
         device: AVCaptureDevice,
         preferences: CaptureVideoFormatPreferences
@@ -155,7 +138,10 @@ enum CaptureFormatSelector: Sendable {
             ratesByPixel[key] = rates
         }
 
-        let sortedKeys = ratesByPixel.keys.sorted { $0.width * $0.height > $1.width * $1.height }
+        let sortedKeys = ratesByPixel.keys.sorted {
+            if $0.width != $1.width { return $0.width > $1.width }
+            return $0.height > $1.height
+        }
         return sortedKeys.map { key in
             let descending = CaptureVideoFormatMenuRates.deduplicatedDescending(ratesByPixel[key] ?? [])
             return CaptureVideoFormatMenuResolution(
@@ -262,16 +248,24 @@ enum CaptureFormatSelector: Sendable {
     ) -> AVCaptureDevice.Format? {
         let minFPS = preferences.minimumFrameRate
 
-        // Step 1: only formats whose max fps meets the minimum threshold.
         let qualifying = device.formats.filter { $0.maxFrameRate >= minFPS - 0.5 }
-        guard !qualifying.isEmpty else { return nil }
+        let candidates = qualifying.isEmpty ? device.formats : qualifying
+        guard !candidates.isEmpty else { return nil }
 
-        // Step 2: highest max frame rate among qualifying formats.
-        let maxFPS = qualifying.map(\.maxFrameRate).max() ?? 0
-        let atMaxFPS = qualifying.filter { $0.maxFrameRate >= maxFPS - 0.5 }
+        let maxFPS = candidates.map(\.maxFrameRate).max() ?? 0
+        let atMaxFPS = candidates.filter { $0.maxFrameRate >= maxFPS - 0.5 }
 
-        // Step 3: among formats at that frame rate, pick the highest pixel count (resolution).
-        return atMaxFPS.max { $0.pixelCount < $1.pixelCount }
+        return atMaxFPS.max(by: widthFirstResolutionSort)
+    }
+
+    private nonisolated static func widthFirstResolutionSort(
+        _ lhs: AVCaptureDevice.Format,
+        _ rhs: AVCaptureDevice.Format
+    ) -> Bool {
+        let lhsDims = CMVideoFormatDescriptionGetDimensions(lhs.formatDescription)
+        let rhsDims = CMVideoFormatDescriptionGetDimensions(rhs.formatDescription)
+        if lhsDims.width != rhsDims.width { return lhsDims.width < rhsDims.width }
+        return lhsDims.height < rhsDims.height
     }
 
     private nonisolated static func applyFrameDuration(
@@ -315,7 +309,13 @@ enum CaptureFormatSelector: Sendable {
         let maxDuration = device.activeVideoMaxFrameDuration
         let minFPS = minDuration.seconds > 0 ? 1 / minDuration.seconds : 0
         let maxFPS = maxDuration.seconds > 0 ? 1 / maxDuration.seconds : 0
-        print("Consolation video applied frame duration: targetFPS=\(targetFPS), minFPS=\(minFPS), maxFPS=\(maxFPS)")
+        #if DEBUG
+        print(
+            "\(BuildInfo.appName) video applied frame duration: targetFPS=\(targetFPS), " +
+            "minDuration=\(minDuration), maxDuration=\(maxDuration), " +
+            "minFPS=\(minFPS), maxFPS=\(maxFPS)"
+        )
+        #endif
     }
 
     private nonisolated static func logAllFormats(
@@ -331,12 +331,14 @@ enum CaptureFormatSelector: Sendable {
             return $0.pixelCount > $1.pixelCount
         }
 
-        print("Consolation macOS video available formats (minimum \(minFPS) fps):")
+        #if DEBUG
+        print("\(BuildInfo.appName) macOS video available formats (minimum \(minFPS) fps):")
         for format in sorted {
             let qualifies = format.maxFrameRate >= minFPS - 0.5
             let marker = !qualifies ? "✗" : (format === best ? "→" : "✓")
             print("  \(marker) \(videoFormatDescription(format))")
         }
+        #endif
         #endif
     }
 
@@ -344,7 +346,9 @@ enum CaptureFormatSelector: Sendable {
         _ format: AVCaptureDevice.Format,
         targetFPS: Double
     ) {
-        print("Consolation video selected format: \(videoFormatDescription(format)), targetFPS=\(targetFPS)")
+        #if DEBUG
+        print("\(BuildInfo.appName) video selected format: \(videoFormatDescription(format)), targetFPS=\(targetFPS)")
+        #endif
     }
 
     nonisolated static func videoFormatDescription(_ format: AVCaptureDevice.Format) -> String {

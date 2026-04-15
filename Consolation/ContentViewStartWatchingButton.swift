@@ -18,7 +18,7 @@ struct ContentViewStartWatchingButton: View {
                     .fill(Color.white.opacity(0.16))
                 Image(systemName: "play.fill")
                     .font(.system(size: 36, weight: .semibold))
-                    .foregroundStyle(isHovered ? Color.green : Color.white)
+                    .foregroundStyle(isHovered ? Color.accentColor : Color.white)
                     .allowsHitTesting(false)
             }
             .frame(width: 72, height: 72)
@@ -27,7 +27,7 @@ struct ContentViewStartWatchingButton: View {
         }
         .buttonStyle(.plain)
         .keyboardShortcut(.defaultAction)
-        .disabled(capture.state == .requestingPermission)
+        .disabled(!capture.canStartWatching)
         .accessibilityLabel("Start Watching")
     }
 }

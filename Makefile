@@ -1,4 +1,4 @@
-.PHONY: build build-ipad build-macos build-release-unsigned clean generate-appicons generate-build-info lint lint-fix-safe reset-perms test 
+.PHONY: build build-ipad build-macos build-release-unsigned clean generate-appicons generate-build-info lint lint-fix-safe reset-all reset-defaults reset-perms test 
 
 # SwiftLint: https://github.com/realm/SwiftLint - `brew install swiftlint`
 SWIFTLINT ?= $(shell command -v swiftlint 2>/dev/null)
@@ -6,6 +6,7 @@ SWIFTLINT ?= $(shell command -v swiftlint 2>/dev/null)
 PROJECT := Consolation.xcodeproj
 SCHEME := Consolation
 APP_NAME := Consolation
+BUNDLE_ID ?= org.centennialoss.consolation
 DERIVED_DATA := build/DerivedData
 DIST_DERIVED_DATA := dist/DerivedData
 
@@ -47,7 +48,7 @@ lint-fix-safe:
 clean:
 	rm -rf build dist
 
-build: lint build-macos build-ipad
+build: test build-macos build-ipad
 
 build-macos: 
 	mkdir -p build
@@ -108,5 +109,11 @@ generate-appicons:
 	@echo "Done writing AppIcons"
 
 reset-perms:
-	@tccutil reset Camera org.centennialoss.consolation
-	@tccutil reset Microphone org.centennialoss.consolation
+	@tccutil reset Camera $(BUNDLE_ID)
+	@tccutil reset Microphone $(BUNDLE_ID)
+
+reset-defaults:
+	@defaults delete $(BUNDLE_ID) 2>/dev/null || true
+	@echo "Reset UserDefaults for $(BUNDLE_ID)"
+
+reset-all: reset-perms reset-defaults

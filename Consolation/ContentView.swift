@@ -17,6 +17,7 @@ struct ContentView: View {
     @State var playbackControlsSize = CGSize.zero
     @State var previewSize = CGSize.zero
     @State private var isShowingAbout = false
+    @State private var isShowingHelp = false
     @State var isPlaybackControlsInteractionActive = false
     @State var isPlaybackControlsHoverActive = false
     #if os(macOS)
@@ -30,16 +31,16 @@ struct ContentView: View {
     @AppStorage(CaptureVideoStatsUserDefaults.statsLocationKey) var videoStatsLocationRawValue =
         CaptureVideoStatsUserDefaults.defaultLocation
     @State var latestVideoFrameRateStats: CaptureVideoFrameRateStats?
-
+    @State var lowMaxFPSWarningPollCount = 0
+    @State var isShowingMaxFPSInfo = false
     #if DEBUG
     @State private var showDeviceDebug = false
     #endif
-
     var body: some View {
         GeometryReader { proxy in
             previewStack(in: proxy)
         }
-        .frame(minWidth: 480, minHeight: 270)
+        .frame(minWidth: 640, minHeight: 480)
         .background {
             #if os(macOS)
             WindowAccessor(window: $window)
@@ -55,6 +56,7 @@ struct ContentView: View {
             if state != .running {
                 cancelAutoHideChrome()
                 latestVideoFrameRateStats = nil
+                lowMaxFPSWarningPollCount = 0
             }
             if oldState != .running, state == .running {
                 #if os(macOS)
@@ -137,11 +139,14 @@ struct ContentView: View {
             capture.setAudioBufferLength(length)
         }
         .onReceive(capture.videoFrameRateStatsPublisher) { stats in
-            guard showVideoStats else { return }
             latestVideoFrameRateStats = stats
+            updateMaxFPSWarningPollCount(with: stats)
         }
         .onReceive(NotificationCenter.default.publisher(for: .showAboutCommand)) { _ in
             isShowingAbout = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showHelpCommand)) { _ in
+            isShowingHelp = true
         }
         .sheet(isPresented: $isShowingAbout) {
             AboutConsolationView {
@@ -151,6 +156,15 @@ struct ContentView: View {
             .interactiveDismissDisabled()
             #endif
         }
+        .sheet(isPresented: $isShowingHelp) {
+            HelpConsolationView {
+                isShowingHelp = false
+            }
+            #if os(macOS)
+            .interactiveDismissDisabled()
+            #endif
+        }
+        .sheet(isPresented: $isShowingMaxFPSInfo) { MaxFPSWarningInfoView() }
         .background {
             Button("") {
                 if capture.state == .running {
@@ -176,16 +190,13 @@ struct ContentView: View {
         }
         #endif
     }
-
 }
-
 extension ContentView {
     @ViewBuilder
     fileprivate func previewStack(in proxy: GeometryProxy) -> some View {
         ZStack {
             Color.black
                 .ignoresSafeArea()
-
             CaptureVideoPreview(
                 session: capture.session,
                 isRunning: capture.state == .running,
@@ -196,10 +207,11 @@ extension ContentView {
                 #endif
             }
             .ignoresSafeArea()
-
             if shouldShowStatsOverlay, let statsLabel = videoStatsLabel {
                 statsOverlay(statsLabel)
             }
+
+            if shouldShowMaxFPSWarning, let label = maxFPSWarningLabel { maxFPSWarningOverlay(label) }
 
             if !isUIHidden {
                 viewerChrome
@@ -215,7 +227,7 @@ extension ContentView {
             Spacer()
 
             if statusRequiresInteraction {
-                statusPanel
+                startScreen
             }
 
             Spacer()
@@ -226,8 +238,13 @@ extension ContentView {
         }
     }
 
-    var statusPanel: some View {
-        ContentViewStatusPanelChrome(capture: capture, showStatusLine: shouldShowStatusLine)
+    var startScreen: some View {
+        ContentViewStartScreen(
+            capture: capture,
+            showStatusLine: shouldShowStatusLine,
+            isShowingAbout: $isShowingAbout,
+            isShowingHelp: $isShowingHelp
+        )
             .padding()
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay {
@@ -329,53 +346,4 @@ extension ContentView {
         }
     }
 
-}
-
-private struct ContentViewStatusPanelChrome: View {
-    @ObservedObject var capture: CaptureSessionManager
-    let showStatusLine: Bool
-
-    var body: some View {
-        VStack {
-            VStack(spacing: 16) {
-                HStack(spacing: 12) {
-                    AppIconImage()
-                        .frame(width: 52, height: 52)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                    Text(BuildInfo.appName)
-                        .font(.system(size: 36, weight: .bold))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
-                }
-                Divider()
-
-                if showStatusLine {
-                    CaptureStatusLine(
-                        state: capture.state,
-                        hasUSBVideoCaptureDevice: !capture.usbCaptureDeviceEntries.isEmpty,
-                        usbVideoCaptureDeviceName: capture.primaryUSBVideoCaptureDisplayName,
-                        hasAnyVideoDevice: !capture.hasNoVideoDevices,
-                        statusMessage: capture.statusMessage
-                    )
-                }
-
-                if capture.mediaPermissionNotice != .none,
-                capture.state != .requestingPermission {
-                    CaptureMediaPermissionEducationNotice(notice: capture.mediaPermissionNotice)
-                }
-
-                if !capture.hasNoVideoDevices {
-                    ContentViewConnectPanel(capture: capture)
-                }
-
-                if capture.canStartWatching {
-                    Divider()
-                    ContentViewStartWatchingButton(capture: capture)
-                }
-            }
-            .frame(maxWidth: 540)
-        }
-        .frame(maxWidth: 540)
-    }
 }

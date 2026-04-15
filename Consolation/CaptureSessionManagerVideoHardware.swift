@@ -80,11 +80,13 @@ extension CaptureSessionManager {
         let ids = Set(devices.map(\.uniqueID))
 
         if let current = selectedVideoDeviceUniqueID, ids.contains(current) {
+            applyFormatPreferencesForSelectedDevice(uniqueID: current)
             return
         }
 
         if let saved = CaptureVideoDeviceUserDefaults.loadSelectedDeviceUniqueID(), ids.contains(saved) {
             selectedVideoDeviceUniqueID = saved
+            applyFormatPreferencesForSelectedDevice(uniqueID: saved)
             return
         }
 
@@ -93,6 +95,9 @@ extension CaptureSessionManager {
         let pick = usbDevices.first ?? cameraOnly.first
         selectedVideoDeviceUniqueID = pick?.uniqueID
         CaptureVideoDeviceUserDefaults.saveSelectedDeviceUniqueID(pick?.uniqueID)
+        if let uniqueID = pick?.uniqueID {
+            applyFormatPreferencesForSelectedDevice(uniqueID: uniqueID)
+        }
     }
 
     func stopWatchingAfterDeviceDisconnect() {
@@ -121,17 +126,24 @@ extension CaptureSessionManager {
         let signature = rawVideoCapabilitiesSignature(devices: devices)
         guard signature != lastLoggedVideoCapabilitiesSignature else { return }
         lastLoggedVideoCapabilitiesSignature = signature
+        #if DEBUG
         print(signature)
+        #endif
     }
 
     private func rawVideoCapabilitiesSignature(devices: [AVCaptureDevice]) -> String {
         guard !devices.isEmpty else {
-            return "Consolation video capabilities changed:\n  (no video devices found)"
+            return "\(BuildInfo.appName) video capabilities changed:\n  (no video devices found)"
         }
 
-        var lines: [String] = ["Consolation video capabilities changed:"]
+        var lines: [String] = ["\(BuildInfo.appName) video capabilities changed:"]
         for device in devices {
             lines.append("Device: \(device.localizedName) [\(device.uniqueID)]")
+            lines.append("  localizedName: \(device.localizedName)")
+            lines.append("  uniqueID: \(device.uniqueID)")
+            lines.append("  modelID: \(device.modelID)")
+            lines.append("  manufacturer: \(device.manufacturer)")
+            lines.append("  deviceType: \(device.deviceType.rawValue)")
 
             struct PixelKey: Hashable {
                 let width: Int

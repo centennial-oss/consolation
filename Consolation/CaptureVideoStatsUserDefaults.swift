@@ -58,7 +58,7 @@ enum CaptureVideoStatsOverlayLocation: String, CaseIterable {
 }
 
 enum CaptureVideoStatsUserDefaults {
-    nonisolated static let showStatsKey = "org.centennialoss.consolation.showVideoStatsOverlay"
-    nonisolated static let statsLocationKey = "org.centennialoss.consolation.videoStatsOverlayLocation"
+    nonisolated static let showStatsKey = AppIdentifier.scoped("showVideoStatsOverlay")
+    nonisolated static let statsLocationKey = AppIdentifier.scoped("videoStatsOverlayLocation")
     nonisolated static let defaultLocation = CaptureVideoStatsOverlayLocation.bottomLeft.rawValue
 }

@@ -8,6 +8,8 @@ import SwiftUI
 #if os(macOS)
 import AppKit
 
+private let mainViewerMinimumContentSize = NSSize(width: 640, height: 480)
+
 struct WindowAccessor: NSViewRepresentable {
     @Binding var window: NSWindow?
 
@@ -16,12 +18,14 @@ struct WindowAccessor: NSViewRepresentable {
         DispatchQueue.main.async {
             self.window = view.window
             view.window?.isMovableByWindowBackground = false
+            view.window?.contentMinSize = mainViewerMinimumContentSize
             view.window?.tabbingMode = .disallowed
         }
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
+        nsView.window?.contentMinSize = mainViewerMinimumContentSize
         nsView.window?.tabbingMode = .disallowed
     }
 }
@@ -109,7 +113,8 @@ extension ContentView {
             return
         }
 
-        let contentSize = CGSize(width: videoSize.width * scale, height: videoSize.height * scale)
+        let requestedSize = CGSize(width: videoSize.width * scale, height: videoSize.height * scale)
+        let contentSize = contentSizeRespectingMinimum(requestedSize, aspectRatio: videoSize.width / videoSize.height)
         let currentFrame = window.frame
         let frameSize = window.frameRect(forContentRect: CGRect(origin: .zero, size: contentSize)).size
         let origin = CGPoint(
@@ -138,10 +143,12 @@ extension ContentView {
         }
 
         window.contentAspectRatio = videoSize
+        window.contentMinSize = minimumContentSizePreservingAspectRatio(videoSize.width / videoSize.height)
         resizeWindowContentToMatchVideoAspect(window: window, videoSize: videoSize)
     }
 
     func resetWindowAspectRatio() {
+        window?.contentMinSize = mainViewerMinimumContentSize
         window?.contentResizeIncrements = NSSize(width: 1, height: 1)
     }
 
@@ -160,20 +167,43 @@ extension ContentView {
         } else {
             adjustedContentSize = CGSize(width: contentSize.width, height: contentSize.width / videoRatio)
         }
+        let clampedContentSize = contentSizeRespectingMinimum(adjustedContentSize, aspectRatio: videoRatio)
 
-        guard abs(adjustedContentSize.width - contentSize.width) > 1
-            || abs(adjustedContentSize.height - contentSize.height) > 1
+        guard abs(clampedContentSize.width - contentSize.width) > 1
+            || abs(clampedContentSize.height - contentSize.height) > 1
         else {
             return
         }
 
         let currentFrame = window.frame
-        let frameSize = window.frameRect(forContentRect: CGRect(origin: .zero, size: adjustedContentSize)).size
+        let frameSize = window.frameRect(forContentRect: CGRect(origin: .zero, size: clampedContentSize)).size
         let origin = CGPoint(
             x: currentFrame.midX - frameSize.width / 2,
             y: currentFrame.midY - frameSize.height / 2
         )
         window.setFrame(CGRect(origin: origin, size: frameSize), display: true, animate: true)
+    }
+
+    func contentSizeRespectingMinimum(_ size: CGSize, aspectRatio: CGFloat) -> CGSize {
+        let minimum = minimumContentSizePreservingAspectRatio(aspectRatio)
+        return CGSize(
+            width: max(size.width, minimum.width),
+            height: max(size.height, minimum.height)
+        )
+    }
+
+    func minimumContentSizePreservingAspectRatio(_ aspectRatio: CGFloat) -> CGSize {
+        guard aspectRatio > 0, aspectRatio.isFinite else {
+            return mainViewerMinimumContentSize
+        }
+        let widthFromMinimumHeight = mainViewerMinimumContentSize.height * aspectRatio
+        if widthFromMinimumHeight >= mainViewerMinimumContentSize.width {
+            return CGSize(width: widthFromMinimumHeight, height: mainViewerMinimumContentSize.height)
+        }
+        return CGSize(
+            width: mainViewerMinimumContentSize.width,
+            height: mainViewerMinimumContentSize.width / aspectRatio
+        )
     }
 
     func clampFrameTopLeftToVisibleScreen(_ frame: CGRect, for window: NSWindow) -> CGRect {

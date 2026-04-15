@@ -26,7 +26,22 @@ struct AppIconImage: View {
             Image(nsImage: NSApp.applicationIconImage)
         }
         #else
-        Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
+        Image(uiImage: Self.uiAppIconImage())
         #endif
     }
+
+    #if os(iOS)
+    private static func uiAppIconImage() -> UIImage {
+        let icons = Bundle.main.object(forInfoDictionaryKey: "CFBundleIcons~ipad")
+            ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleIcons")
+        guard let icons = icons as? [String: Any],
+              let primaryIcon = icons["CFBundlePrimaryIcon"] as? [String: Any],
+              let iconFiles = primaryIcon["CFBundleIconFiles"] as? [String],
+              let iconName = iconFiles.last,
+              let image = UIImage(named: iconName) else {
+            return UIImage(named: "AppIcon_1024") ?? UIImage()
+        }
+        return image
+    }
+    #endif
 }

@@ -7,9 +7,9 @@ import Foundation
 
 /// Persisted separately from any future `volumeLevel` slider so mute/unmute does not clobber stored volume.
 enum CaptureAudioUserDefaults {
-    nonisolated static let isMutedKey = "org.centennialoss.consolation.captureAudioMuted"
-    nonisolated static let volumeLevelKey = "org.centennialoss.consolation.captureAudioVolumeLevel"
-    nonisolated static let bufferLengthKey = "org.centennialoss.consolation.captureAudioBufferLength"
+    nonisolated static let isMutedKey = AppIdentifier.scoped("captureAudioMuted")
+    nonisolated static let volumeLevelKey = AppIdentifier.scoped("captureAudioVolumeLevel")
+    nonisolated static let bufferLengthKey = AppIdentifier.scoped("captureAudioBufferLength")
     nonisolated static let bufferLengthOptions: [Int] = [1, 2, 4, 8, 16, 32, 64]
     nonisolated static let defaultBufferLength = 8
 

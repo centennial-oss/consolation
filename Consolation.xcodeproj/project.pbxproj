@@ -25,9 +25,9 @@
 
 /* Begin PBXFileReference section */
 		D32ED6FA2F8B8CAF00B6A9BA /* Consolation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Consolation.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D32ED7242F8B8CB000B6A9BA /* Consolation/Version.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Consolation/Version.xcconfig; sourceTree = SOURCE_ROOT; };
 		D32ED7072F8B8CB000B6A9BA /* ConsolationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ConsolationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D32ED7112F8B8CB000B6A9BA /* ConsolationUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ConsolationUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D32ED7242F8B8CB000B6A9BA /* Consolation/Version.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Consolation/Version.xcconfig; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -439,14 +439,14 @@
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsMultipleScenes[sdk=iphoneos*]" = NO;
 				"INFOPLIST_KEY_UIApplicationSupportsMultipleScenes[sdk=iphonesimulator*]" = NO;
+				"INFOPLIST_KEY_UIDeviceFamily[sdk=iphoneos*]" = 2;
+				"INFOPLIST_KEY_UIDeviceFamily[sdk=iphonesimulator*]" = 2;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				"INFOPLIST_KEY_UIDeviceFamily[sdk=iphoneos*]" = 2;
-				"INFOPLIST_KEY_UIDeviceFamily[sdk=iphonesimulator*]" = 2;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
@@ -497,14 +497,14 @@
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsMultipleScenes[sdk=iphoneos*]" = NO;
 				"INFOPLIST_KEY_UIApplicationSupportsMultipleScenes[sdk=iphonesimulator*]" = NO;
+				"INFOPLIST_KEY_UIDeviceFamily[sdk=iphoneos*]" = 2;
+				"INFOPLIST_KEY_UIDeviceFamily[sdk=iphonesimulator*]" = 2;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				"INFOPLIST_KEY_UIDeviceFamily[sdk=iphoneos*]" = 2;
-				"INFOPLIST_KEY_UIDeviceFamily[sdk=iphonesimulator*]" = 2;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";

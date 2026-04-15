@@ -25,10 +25,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #endif
 
 extension Notification.Name {
-    static let showAboutCommand = Notification.Name("org.centennialoss.consolation.showAboutCommand")
-    static let audioMuteToggleCommand = Notification.Name("org.centennialoss.consolation.audioMuteToggleCommand")
-    static let audioVolumeLevelCommand = Notification.Name("org.centennialoss.consolation.audioVolumeLevelCommand")
-    static let audioBufferLengthCommand = Notification.Name("org.centennialoss.consolation.audioBufferLengthCommand")
+    static let showAboutCommand = Notification.Name(AppIdentifier.scoped("showAboutCommand"))
+    static let showHelpCommand = Notification.Name(AppIdentifier.scoped("showHelpCommand"))
+    static let audioMuteToggleCommand = Notification.Name(AppIdentifier.scoped("audioMuteToggleCommand"))
+    static let audioVolumeLevelCommand = Notification.Name(AppIdentifier.scoped("audioVolumeLevelCommand"))
+    static let audioBufferLengthCommand = Notification.Name(AppIdentifier.scoped("audioBufferLengthCommand"))
 }
 
 @main
@@ -49,6 +50,10 @@ struct ConsolationApp: App {
     @UIApplicationDelegateAdaptor(IOSAppOrientationDelegate.self) var iosOrientationDelegate
     #endif
 
+    init() {
+        AppIdentifier.logBundleIdentifier()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView(capture: captureSession)
@@ -62,12 +67,18 @@ struct ConsolationApp: App {
         .commands {
             #if os(macOS)
             CommandGroup(replacing: .newItem) {}
+            #endif
             CommandGroup(replacing: .appInfo) {
                 Button("About \(BuildInfo.appName)") {
                     NotificationCenter.default.post(name: .showAboutCommand, object: nil)
                 }
             }
-            #endif
+            CommandGroup(replacing: .help) {
+                Button("\(BuildInfo.appName) Help") {
+                    NotificationCenter.default.post(name: .showHelpCommand, object: nil)
+                }
+                .keyboardShortcut("?", modifiers: [.command])
+            }
             CommandGroup(after: .toolbar) {
                 #if os(macOS)
                 Menu("Resize Window") {
@@ -172,7 +183,6 @@ struct ConsolationApp: App {
                 Text(title)
             }
         }
-        .disabled(captureSession.state != .running)
     }
 
     private func isVideoStatsOptionSelected(location: CaptureVideoStatsOverlayLocation?) -> Bool {

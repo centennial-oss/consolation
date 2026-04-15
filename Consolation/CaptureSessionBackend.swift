@@ -274,7 +274,9 @@ actor CaptureSessionBackend {
             try CaptureFormatSelector.reapplyFormatAndFrameDuration(device: device, preferences: preferences)
             updateActiveNominalFrameRate(device: device)
         } catch {
-            print("Consolation video: failed to reapply format after startRunning: \(error)")
+            #if DEBUG
+            print("\(BuildInfo.appName) video: failed to reapply format after startRunning: \(error)")
+            #endif
         }
     }
 
@@ -309,11 +311,13 @@ private extension CaptureSessionBackend {
         let maxDuration = device.activeVideoMaxFrameDuration
         let minFPS = minDuration.seconds > 0 ? 1 / minDuration.seconds : 0
         let maxFPS = maxDuration.seconds > 0 ? 1 / maxDuration.seconds : 0
+        #if DEBUG
         print(
-            "Consolation video active format: " +
+            "\(BuildInfo.appName) video active format: " +
             "\(CaptureFormatSelector.videoFormatDescription(device.activeFormat)), " +
             "minFPS=\(minFPS), maxFPS=\(maxFPS)"
         )
+        #endif
     }
 
     /// Resolves the device chosen in the connect panel, with a simulator fallback when discovery is empty.

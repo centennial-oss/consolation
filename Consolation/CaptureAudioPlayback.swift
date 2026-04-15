@@ -15,7 +15,7 @@ nonisolated final class CaptureAudioPlayback: NSObject,
     AVCaptureAudioDataOutputSampleBufferDelegate,
     @unchecked Sendable {
     /// Queue passed to `AVCaptureAudioDataOutput.setSampleBufferDelegate`; all processing runs here.
-    let workQueue = DispatchQueue(label: "org.centennialoss.consolation.audio.capture", qos: .userInitiated)
+    let workQueue = DispatchQueue(label: AppIdentifier.scoped("audio.capture"), qos: .userInitiated)
 
     /// Lets `stop()` use `sync` safely even if invoked from this queue (e.g. future refactors).
     private static let workQueueMarker = DispatchSpecificKey<UInt8>()

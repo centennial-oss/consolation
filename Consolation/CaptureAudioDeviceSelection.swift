@@ -52,7 +52,9 @@ enum CaptureAudioDeviceSelection {
                 try audioSession.setPreferredInput(externalInput)
             }
         } catch {
-            print("Consolation iOS audio session setup failed before device selection: \(error)")
+            #if DEBUG
+            print("\(BuildInfo.appName) iOS audio session setup failed before device selection: \(error)")
+            #endif
         }
         #endif
         guard !devices.isEmpty else { return nil }

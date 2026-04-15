@@ -6,5 +6,5 @@
 import Foundation
 
 extension Notification.Name {
-    static let playbackSizeCommand = Notification.Name("org.centennialoss.consolation.playbackSizeCommand")
+    static let playbackSizeCommand = Notification.Name(AppIdentifier.scoped("playbackSizeCommand"))
 }

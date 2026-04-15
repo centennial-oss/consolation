@@ -285,7 +285,9 @@ final class IOSPreviewView: UIView {
         if connection.isVideoRotationAngleSupported(angle) {
             connection.videoRotationAngle = angle
         } else {
-            print("Consolation iOS video: preview rotation angle \(angle) is not supported")
+            #if DEBUG
+            print("\(BuildInfo.appName) iOS video: preview rotation angle \(angle) is not supported")
+            #endif
         }
         #endif
         applyLayerMirrorTransform(

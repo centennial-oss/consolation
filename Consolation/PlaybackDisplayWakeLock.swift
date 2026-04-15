@@ -23,7 +23,7 @@ enum PlaybackDisplayWakeLock {
             guard activity == nil else { return }
             activity = ProcessInfo.processInfo.beginActivity(
                 options: [.idleDisplaySleepDisabled, .idleSystemSleepDisabled],
-                reason: "org.centennialoss.consolation.playback"
+                reason: AppIdentifier.scoped("playback")
             )
         } else if let current = activity {
             ProcessInfo.processInfo.endActivity(current)

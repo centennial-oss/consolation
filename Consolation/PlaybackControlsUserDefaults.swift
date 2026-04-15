@@ -6,8 +6,8 @@
 import Foundation
 
 enum PlaybackControlsUserDefaults {
-    private static let positionXKey = "org.centennialoss.consolation.playbackControlsPositionX"
-    private static let positionYKey = "org.centennialoss.consolation.playbackControlsPositionY"
+    private static let positionXKey = AppIdentifier.scoped("playbackControlsPositionX")
+    private static let positionYKey = AppIdentifier.scoped("playbackControlsPositionY")
 
     static func loadPosition() -> CGSize? {
         guard let positionX = UserDefaults.standard.object(forKey: positionXKey) as? Double,

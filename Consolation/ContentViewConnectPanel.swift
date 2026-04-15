@@ -8,6 +8,7 @@ import SwiftUI
 
 struct ContentViewConnectPanel: View {
     @ObservedObject var capture: CaptureSessionManager
+    @State private var compatibilityIssueForSheet: CaptureDeviceCompatibilityIssue?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -15,6 +16,9 @@ struct ContentViewConnectPanel: View {
             resolutionMenuPill
         }
         .frame(maxWidth: 320)
+        .sheet(item: $compatibilityIssueForSheet) { issue in
+            CaptureDeviceCompatibilityIssueView(issue: issue)
+        }
     }
 
     private var deviceMenuPill: some View {
@@ -22,30 +26,53 @@ struct ContentViewConnectPanel: View {
             Text("Device")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(.white)
-            Menu {
-                Section("Capture devices") {
-                    if capture.usbCaptureDeviceEntries.isEmpty {
-                        Text("Capture Card Not Detected")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(capture.usbCaptureDeviceEntries) { entry in
-                            deviceMenuButton(entry: entry)
+            HStack(spacing: 8) {
+                Menu {
+                    Section("Capture devices") {
+                        if capture.usbCaptureDeviceEntries.isEmpty {
+                            Text("Capture Card Not Detected")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(capture.usbCaptureDeviceEntries) { entry in
+                                deviceMenuButton(entry: entry)
+                            }
                         }
                     }
-                }
-            if !capture.cameraDeviceEntries.isEmpty {
-                Section("Cameras") {
-                    ForEach(capture.cameraDeviceEntries) { entry in
-                        deviceMenuButton(entry: entry)
+                    if !capture.cameraDeviceEntries.isEmpty {
+                        Section("Cameras") {
+                            ForEach(capture.cameraDeviceEntries) { entry in
+                                deviceMenuButton(entry: entry)
+                            }
+                        }
                     }
+                } label: {
+                    ConnectPanelPillLabel(value: capture.connectPanelDevicePrimaryLabel())
+                }
+                .disabled(capture.hasNoVideoDevices || isConnecting)
+                .buttonStyle(.plain)
+
+                if let issue = selectedDeviceCompatibilityIssue {
+                    Button {
+                        compatibilityIssueForSheet = issue
+                    } label: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(.yellow)
+                            .frame(width: 36, height: 36)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Capture card compatibility warning")
                 }
             }
-            } label: {
-                ConnectPanelPillLabel(value: capture.connectPanelDevicePrimaryLabel())
-            }
-            .disabled(capture.hasNoVideoDevices)
-            .buttonStyle(.plain)
         }
+    }
+
+    private var selectedDeviceCompatibilityIssue: CaptureDeviceCompatibilityIssue? {
+        guard let id = capture.selectedVideoDeviceUniqueID,
+              let device = AVCaptureDevice(uniqueID: id)
+        else { return nil }
+        return CaptureDeviceCompatibilityIssues.issue(for: device)
     }
 
     private func deviceMenuButton(entry: CaptureDeviceSummary) -> some View {
@@ -69,7 +96,7 @@ struct ContentViewConnectPanel: View {
                     .font(.title3.weight(.bold))
                     .foregroundStyle(.white)
                 resolutionMenu(for: device)
-                    .disabled(capture.hasNoVideoDevices)
+                    .disabled(capture.hasNoVideoDevices || isConnecting)
             }
         } else {
             VStack(alignment: .leading, spacing: 8) {
@@ -86,9 +113,9 @@ struct ContentViewConnectPanel: View {
     private func resolutionMenu(for device: AVCaptureDevice) -> some View {
         let options = CaptureFormatSelector.resolutionMenuOptions(device: device)
         return Menu {
-            ForEach(options) { resolution in
+            ForEach(platformMenuOrder(options)) { resolution in
                 Menu {
-                    ForEach(resolution.frameRatesDescending, id: \.self) { fps in
+                    ForEach(platformMenuOrder(resolution.frameRatesDescending), id: \.self) { fps in
                         formatMenuButton(
                             device: device,
                             resolution: resolution,
@@ -96,7 +123,10 @@ struct ContentViewConnectPanel: View {
                         )
                     }
                 } label: {
-                    Text("\(resolution.width)×\(resolution.height)")
+                    Text(CaptureVideoFormatDisplayStrings.resolutionLabel(
+                        width: resolution.width,
+                        height: resolution.height
+                    ))
                 }
             }
         } label: {
@@ -150,6 +180,18 @@ struct ContentViewConnectPanel: View {
     private func formatMenuRowTitle(fps: Double) -> String {
         "\(Int(round(fps))) fps"
     }
+
+    private func platformMenuOrder<Value>(_ values: [Value]) -> [Value] {
+        #if os(iOS)
+        values.reversed()
+        #else
+        values
+        #endif
+    }
+
+    private var isConnecting: Bool {
+        capture.state == .requestingPermission
+    }
 }
 
 // MARK: - Pill chrome
@@ -178,5 +220,56 @@ private struct ConnectPanelPillLabel: View {
                 .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
         }
         .contentShape(Capsule())
+    }
+}
+
+private struct CaptureDeviceCompatibilityIssueView: View {
+    @Environment(\.dismiss) private var dismiss
+    let issue: CaptureDeviceCompatibilityIssue
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.yellow)
+                    .font(.title)
+                Text("Capture Card Compatibility")
+                    .font(.title.weight(.semibold))
+                    .foregroundStyle(.white)
+            }
+            .padding(.vertical, 16)
+
+            Text(
+                "This capture card has known compatibility issues with \(issue.platform.rawValue).\n" +
+                "Performance may be below the advertised resolution or frame rate settings."
+            )
+            .font(.system(size: 16))
+            .lineSpacing(5)
+            .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("About Your Capture Card")
+                    .font(.system(size: 16, weight: .semibold))
+
+                Text(issue.summary)
+                    .foregroundStyle(.secondary)
+                    .font(.system(size: 16))
+                    .lineSpacing(5)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.vertical, 24)
+            HStack {
+                Spacer()
+                Button("Close") {
+                    dismiss()
+                }
+                .font(.system(size: 16))
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24)
+        .frame(width: 630)
     }
 }

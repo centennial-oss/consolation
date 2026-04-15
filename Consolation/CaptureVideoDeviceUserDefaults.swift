@@ -6,8 +6,7 @@
 import Foundation
 
 enum CaptureVideoDeviceUserDefaults {
-    nonisolated static let selectedVideoDeviceUniqueIDKey =
-        "org.centennialoss.consolation.selectedVideoDeviceUniqueID"
+    nonisolated static let selectedVideoDeviceUniqueIDKey = AppIdentifier.scoped("selectedVideoDeviceUniqueID")
 
     static func loadSelectedDeviceUniqueID() -> String? {
         let value = UserDefaults.standard.string(forKey: selectedVideoDeviceUniqueIDKey)

@@ -15,7 +15,7 @@ struct CaptureVideoFrameRateStats: Sendable {
 }
 
 nonisolated final class CaptureVideoFrameRateMonitor: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
-    let queue = DispatchQueue(label: "org.centennialoss.consolation.video-frame-rate-monitor")
+    let queue = DispatchQueue(label: AppIdentifier.scoped("video-frame-rate-monitor"))
     var onStatsInterval: (@Sendable (CaptureVideoFrameRateStats) -> Void)?
 
     private var frameCount = 0
@@ -55,11 +55,13 @@ nonisolated final class CaptureVideoFrameRateMonitor: NSObject, AVCaptureVideoDa
             droppedFrames: droppedFrameCount,
             maxPresentationGap: maxPresentationGap
         )
+        #if DEBUG
         print(
-            "Consolation video delivered fps: wall=\(wallFPS), presentation=\(presentationFPS), " +
+            "\(BuildInfo.appName) video delivered fps: wall=\(wallFPS), presentation=\(presentationFPS), " +
             "frames=\(frameCount), dropped=\(droppedFrameCount), " +
             "maxPresentationGap=\(maxPresentationGap)"
         )
+        #endif
         onStatsInterval?(stats)
 
         frameCount = 0
