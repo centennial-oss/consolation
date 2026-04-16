@@ -1,18 +1,22 @@
-# <img src="assets/app-icon.png" alt="Consolation" height="48" /> Consolation
+# <img src="assets/app-icon.png" alt="Consolation" height="48" /> Consolation [<img align="right" src="assets/download-app-store.svg" />](https://apps.apple.com/us/app/consolation/id1563856788)
 
 A no-frills video capture viewer for macOS and iPadOS.
 
-Consolation is coming soon to the App Store. Release downloads will also be available from [this project's releases](https://github.com/centennial-oss/consolation/releases).
+Consolation is [available in the App Store](https://apps.apple.com/us/app/consolation/id1563856788) or can be downloaded directly from [this project's releases](https://github.com/centennial-oss/consolation/releases).
 
 ## About
 
 Consolation is a free app that enables your Mac or iPad to be used as a screen for devices like gaming consoles, Raspberry Pis, and even a Mac mini, via a standard USB Video Class (UVC) video capture card.
 
-The app is intentionally simple: watch the live feed in a window or full screen. No recording or saving, no streaming to the internet. Just plug and play, privately with no ads or tracking.
+The app is intentionally simple: watch the live video in a window or full screen. No recording or saving, no streaming to the internet. Just plug and play, privately with no ads or tracking.
 
 ## Screenshots
 
-Coming soon.
+<img src="assets/screenshots/01-ipad-start-screen.png" alt="iPad start screen" width="280" /> <img src="assets/screenshots/02-ipad-botw-1.png" alt="iPad Breath of the Wild gameplay" width="280" /> <img src="assets/screenshots/03-ipad-botw-lowfps-warning.png" alt="iPad low frame rate warning" width="280" />
+
+<img src="assets/screenshots/04-ipad-ltz-zoom-4-3.png" alt="iPad zoomed 4:3 gameplay" width="280" /> <img src="assets/screenshots/05-macos-switch.png" alt="macOS Nintendo Switch capture" width="280" /> <img src="assets/screenshots/06-macos-botw-stats.png" alt="macOS capture stats" width="280" />
+
+<img src="assets/screenshots/07-macos-menubar.png" alt="macOS menu bar" width="280" /> <img src="assets/screenshots/08-macos-rpi.png" alt="macOS Raspberry Pi capture" width="280" /> <img src="assets/screenshots/09-macos-smash.png" alt="macOS Smash Bros capture" width="280" />
 
 ## Privacy
 
@@ -20,14 +24,14 @@ Consolation does not collect, send, or share your data. Audio and video stay loc
 
 ## Supported Capture Devices
 
-Any capture device that appears to the system through AVFoundation as a camera and microphone input should work with Consolation. This typically includes standard USB Video Class (UVC) capture devices supported by macOS and iPadOS.
+Any capture device that appears to the system through AVFoundation as a USB Video Class (UVC) capture devices should work with Consolation.
 
-Consolation is confirmed to work with these specific devices:
+Consolation has been tested by the developers with these capture devices:
 
-- Elgato HD60 X
 - acer USB 3.0 Video Capture Card (model OCB5B0)
-- UGREEN Full HD 1080p Capture Card (model 40189)
 - WANKEDA 4K Capture Card 1080p 60FPS for Streaming (1da603d4)
+- Elgato HD60 X
+- UGREEN Full HD 1080p Capture Card (model 40189) -  ⚠️ max 30p @ 1920x1080
 
 ## Requirements
 
