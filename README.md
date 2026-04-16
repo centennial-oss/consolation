@@ -12,11 +12,11 @@ The app is intentionally simple: watch the live video in a window or full screen
 
 ## Screenshots
 
-<img src="assets/screenshots/01-ipad-start-screen.png" alt="iPad start screen" width="280" /> <img src="assets/screenshots/02-ipad-botw-1.png" alt="iPad Breath of the Wild gameplay" width="280" /> <img src="assets/screenshots/03-ipad-botw-lowfps-warning.png" alt="iPad low frame rate warning" width="280" />
+<img src="assets/screenshots/01-ipad-start-screen.png" alt="iPad start screen" width="270" /> <img src="assets/screenshots/02-ipad-botw-1.png" alt="iPad Breath of the Wild gameplay" width="270" /> <img src="assets/screenshots/03-ipad-botw-lowfps-warning.png" alt="iPad low frame rate warning" width="270" />
 
-<img src="assets/screenshots/04-ipad-ltz-zoom-4-3.png" alt="iPad zoomed 4:3 gameplay" width="280" /> <img src="assets/screenshots/05-macos-switch.png" alt="macOS Nintendo Switch capture" width="280" /> <img src="assets/screenshots/06-macos-botw-stats.png" alt="macOS capture stats" width="280" />
+<img src="assets/screenshots/04-ipad-ltz-zoom-4-3.png" alt="iPad zoomed 4:3 gameplay" width="270" /> <img src="assets/screenshots/05-macos-switch.png" alt="macOS Nintendo Switch capture" width="270" /> <img src="assets/screenshots/06-macos-botw-stats.png" alt="macOS capture stats" width="270" />
 
-<img src="assets/screenshots/07-macos-menubar.png" alt="macOS menu bar" width="280" /> <img src="assets/screenshots/08-macos-rpi.png" alt="macOS Raspberry Pi capture" width="280" /> <img src="assets/screenshots/09-macos-smash.png" alt="macOS Smash Bros capture" width="280" />
+<img src="assets/screenshots/07-macos-menubar.png" alt="macOS menu bar" width="270" /> <img src="assets/screenshots/08-macos-rpi.png" alt="macOS Raspberry Pi capture" width="270" /> <img src="assets/screenshots/09-macos-smash.png" alt="macOS Smash Bros capture" width="270" />
 
 ## Privacy
 
