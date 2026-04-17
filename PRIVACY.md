@@ -1,7 +1,7 @@
 # Consolation App - Privacy Policy
 
-**Last updated:** April 14, 2026
- - First publish
+**Last updated:** April 16, 2026
+ - Clarify data storage
 
 ## Summary
 
@@ -20,7 +20,7 @@ The app has no network entitlements and cannot make or accept network connection
 
 ## Data Storage
 
-All snippets and app data are stored locally on your Mac. Nothing leaves your device.
+Consolation stores your feature preferences like Stay on Top, Volume level, etc., locally. Nothing leaves your device. Video and Audio are transient and are never stored.
 
 ## Changes
 
