@@ -56,7 +56,7 @@ struct HelpConsolationView: View {
                 systemImage: "externaldrive.connected.to.line.below",
                 body: "While any USB Video Class (UVC) device should work with \(BuildInfo.appName), video " +
                     "quality ultimately depends on the capture device hardware. Some devices " +
-                    " may advertise resolutions and frame rates beyond their actual capabilties."
+                    " may advertise resolutions and frame rates beyond their actual capabilities."
             )
 
             Divider()
