@@ -63,3 +63,9 @@ Consolation has been tested by the developers with these capture devices:
 Humans write this software with AI assistance. All contributions are well-tested and merged only after being reviewed and approved by humans who fully understand and take responsibility for the contribution.
 
 While we welcome pull requests and other contributions from other humans, including AI-generated code, we do not accept contributions from AI bots. A human must review, understand, and sign off on all commits. Please file an issue to discuss any proposed feature before working on it.
+
+## Trademark Notice
+
+Consolation and its logo are trademarks of Centennial OSS, Inc.
+Use of the name and branding is not permitted for modified versions or forks without permission.
+See TRADEMARKS.md for details.
