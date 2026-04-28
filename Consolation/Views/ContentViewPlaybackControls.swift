@@ -36,7 +36,7 @@ extension ContentView {
 
     /// Shared toolbar contents; macOS may offset/drag the whole bar, iOS keeps it fixed bottom-center.
     private var playbackControlsBar: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 12) {
             PlaybackToolbarIconButton(
                 systemName: "power",
                 accessibilityLabel: "Stop Capturing",
@@ -45,7 +45,9 @@ extension ContentView {
                 action: { capture.stopWatching() }
             )
 
-            HStack(spacing: 4) {
+            PlaybackToolbarDivider()
+
+            HStack(spacing: 2) {
                 PlaybackToolbarIconButton(
                     systemName: capture.isAudioMuted ? "speaker.slash.fill" : "speaker.fill",
                     accessibilityLabel: capture.isAudioMuted ? "Unmute audio" : "Mute audio",
@@ -69,7 +71,7 @@ extension ContentView {
                         onEditingChanged: handleSliderEditingChanged(_:)
                     )
                     .labelsHidden()
-                    .frame(width: 150)
+                    .frame(width: 120)
                     .tint(.white)
                     .disabled(capture.isAudioMuted)
 
@@ -81,25 +83,47 @@ extension ContentView {
                         .allowsHitTesting(false)
                     }
                 }
-                .frame(width: 170)
+                .frame(width: 140)
                 .frame(maxHeight: 28)
             }
 
-            #if os(iOS)
-            if isIPad {
-                PlaybackToolbarTextToggleButton(
-                    title: "4:3",
-                    accessibilityLabel: "Fill screen with 4:3 video",
-                    isOn: isClassicAspectFillEnabled,
-                    action: {
-                        isClassicAspectFillEnabled.toggle()
-                        resetHoverTimer()
+            PlaybackToolbarDivider()
+
+            HStack(spacing: 4) {
+                Image(systemName: "minus.magnifyingglass")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 24)
+                    .allowsHitTesting(false)
+                ZStack {
+                    VStack(spacing: 20) {
+                        Color.black.opacity(0.35)
                     }
-                )
+                    .cornerRadius(14)
+                    .allowsHitTesting(false)
+                    Slider(
+                        value: $previewZoomLevel,
+                        in: 0...100,
+                        onEditingChanged: handleSliderEditingChanged(_:)
+                    )
+                    .labelsHidden()
+                    .frame(width: 120)
+                    .tint(.white)
+                }
+                .frame(width: 140)
+                .frame(maxHeight: 28)
+                Image(systemName: "plus.magnifyingglass")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 24)
+                    .allowsHitTesting(false)
             }
-            #endif
+            .frame(width: 200)
+            .frame(maxHeight: 28)
 
             #if os(macOS)
+            PlaybackToolbarDivider()
+
             PlaybackToolbarIconButton(
                 systemName: isFullscreenActive
                     ? "arrow.down.right.and.arrow.up.left"
@@ -151,22 +175,6 @@ extension ContentView {
         resetHoverTimer()
     }
 
-    var isIPadClassicAspectFillActive: Bool {
-        #if os(iOS)
-        isIPad && isClassicAspectFillEnabled
-        #else
-        false
-        #endif
-    }
-
-    var isIPad: Bool {
-        #if os(iOS)
-        UIDevice.current.userInterfaceIdiom == .pad
-        #else
-        false
-        #endif
-    }
-
     #if os(macOS)
     var isFullscreenActive: Bool {
         window?.styleMask.contains(.fullScreen) ?? false
@@ -211,30 +219,9 @@ struct PlaybackToolbarIconButton: View {
     }
 }
 
-struct PlaybackToolbarTextToggleButton: View {
-    let title: String
-    let accessibilityLabel: String
-    let isOn: Bool
-    var dimension: CGFloat = 36
-    let action: () -> Void
-
-    @State private var isHovered = false
-
+struct PlaybackToolbarDivider: View {
     var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(isOn ? Color.accentColor : Color.white)
-                .frame(width: dimension, height: dimension)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(isOn || isHovered ? Color.accentColor.opacity(0.16) : Color.clear)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .onHover { isHovered = $0 }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityValue(isOn ? "On" : "Off")
+        Divider()
+            .frame(height: 32)
     }
 }

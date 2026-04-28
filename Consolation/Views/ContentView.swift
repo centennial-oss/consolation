@@ -24,9 +24,9 @@ struct ContentView: View {
     @State var isAppMenuTracking = false
     #endif
     @GestureState private var playbackControlsDragOffset = CGSize.zero
-    #if os(iOS)
-    @State var isClassicAspectFillEnabled = false
-    #endif
+    @State var previewZoomLevel = 0.0
+    @State var previewPanOffset = CGSize.zero
+    @State var previewPanDragLastTranslation = CGSize.zero
     @AppStorage(CaptureVideoStatsUserDefaults.showStatsKey) var showVideoStats = false
     @AppStorage(CaptureVideoStatsUserDefaults.statsLocationKey) var videoStatsLocationRawValue =
         CaptureVideoStatsUserDefaults.defaultLocation
@@ -114,6 +114,7 @@ struct ContentView: View {
             PlaybackDisplayWakeLock.setActive(false)
             resetHoverTimer()
             capture.refreshMediaCaptureAuthorizationStatuses()
+            loadPreviewZoomLevelForSelectedDevice()
         }
         .onDisappear {
             PlaybackDisplayWakeLock.setActive(false)
@@ -122,6 +123,13 @@ struct ContentView: View {
             if phase == .active {
                 capture.refreshMediaCaptureAuthorizationStatuses()
             }
+        }
+        .onChange(of: capture.selectedVideoDeviceUniqueID) { _, _ in
+            loadPreviewZoomLevelForSelectedDevice()
+        }
+        .onChange(of: previewZoomLevel) { _, newValue in
+            savePreviewZoomLevel(newValue)
+            if newValue == 0 { previewPanOffset = .zero }
         }
         #if os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: .playbackSizeCommand)) { notification in
@@ -213,16 +221,7 @@ extension ContentView {
             // owns the `AVCaptureVideoPreviewLayer`; creating/attaching that layer only after
             // the session starts caused UVC capture devices to fall back to ~25 FPS. The stable
             // sequence is: preview layer exists, layer has the session, then the session starts.
-            CaptureVideoPreview(
-                session: capture.session,
-                isRunning: capture.state == .running,
-                isClassicAspectFillEnabled: isIPadClassicAspectFillActive
-            ) {
-                #if os(macOS)
-                zoomWindowToVideoAspectIfPossible()
-                #endif
-            }
-            .ignoresSafeArea()
+            captureVideoPreview
 
             if shouldShowStatsOverlay, let statsLabel = videoStatsLabel {
                 statsOverlay(statsLabel)

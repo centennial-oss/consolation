@@ -73,7 +73,8 @@ final class CaptureSessionManager: ObservableObject {
         isAudioMuted = CaptureAudioUserDefaults.loadIsMuted()
         volumeLevel = CaptureAudioUserDefaults.loadVolumeLevel()
         audioBufferLength = CaptureAudioUserDefaults.loadBufferLength()
-        self.formatPreferences = formatPreferences ?? CaptureVideoFormatPreferences.loadFromStorage()
+        self.formatPreferences = formatPreferences ?? .defaultForLaunch
+        if formatPreferences == nil { loadStoredFormatPreferences() }
         Task { [weak self] in
             guard let self else { return }
             await self.backend.setVideoStatsUpdateHandler { [weak self] stats in
@@ -324,5 +325,19 @@ final class CaptureSessionManager: ObservableObject {
         await backend.setAudioBufferLength(bufferLength)
         videoSize = await backend.activeVideoSize
         nominalVideoFrameRate = await backend.activeNominalFrameRate
+    }
+}
+
+private extension CaptureSessionManager {
+    func loadStoredFormatPreferences() {
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let loadedPreferences = CaptureVideoFormatPreferences.loadFromStorage()
+            await self?.applyLoadedFormatPreferences(loadedPreferences)
+        }
+    }
+
+    @MainActor
+    func applyLoadedFormatPreferences(_ preferences: CaptureVideoFormatPreferences) {
+        formatPreferences = preferences
     }
 }
