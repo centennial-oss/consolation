@@ -63,6 +63,13 @@ jobs:
             fi
           done
 
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Run clean, test
+        run: |
+          make clean test
+
       - name: Import signing certificates
         env:
           APPLE_DEVID_CERT_BASE64: ${{ secrets.APPLE_DEVID_CERT_BASE64 }}
