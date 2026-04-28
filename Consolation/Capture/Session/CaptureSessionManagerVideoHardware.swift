@@ -127,7 +127,7 @@ extension CaptureSessionManager {
         guard signature != lastLoggedVideoCapabilitiesSignature else { return }
         lastLoggedVideoCapabilitiesSignature = signature
         #if DEBUG
-        print(signature)
+        NSLog("[CapabilitySignature] \(signature)")
         #endif
     }
 

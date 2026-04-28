@@ -310,8 +310,8 @@ enum CaptureFormatSelector: Sendable {
         let minFPS = minDuration.seconds > 0 ? 1 / minDuration.seconds : 0
         let maxFPS = maxDuration.seconds > 0 ? 1 / maxDuration.seconds : 0
         #if DEBUG
-        print(
-            "\(BuildInfo.appName) video applied frame duration: targetFPS=\(targetFPS), " +
+        NSLog(
+            "[VideoFrameDuration] applied: targetFPS=\(targetFPS), " +
             "minDuration=\(minDuration), maxDuration=\(maxDuration), " +
             "minFPS=\(minFPS), maxFPS=\(maxFPS)"
         )
@@ -332,11 +332,11 @@ enum CaptureFormatSelector: Sendable {
         }
 
         #if DEBUG
-        print("\(BuildInfo.appName) macOS video available formats (minimum \(minFPS) fps):")
+        NSLog("[VideoFormats] macOS available formats (minimum \(minFPS) fps):")
         for format in sorted {
             let qualifies = format.maxFrameRate >= minFPS - 0.5
             let marker = !qualifies ? "✗" : (format === best ? "→" : "✓")
-            print("  \(marker) \(videoFormatDescription(format))")
+            NSLog("  \(marker) \(videoFormatDescription(format))")
         }
         #endif
         #endif
@@ -347,7 +347,7 @@ enum CaptureFormatSelector: Sendable {
         targetFPS: Double
     ) {
         #if DEBUG
-        print("\(BuildInfo.appName) video selected format: \(videoFormatDescription(format)), targetFPS=\(targetFPS)")
+        NSLog("[VideoFormats] selected: \(videoFormatDescription(format)), targetFPS=\(targetFPS)")
         #endif
     }
 

@@ -53,7 +53,7 @@ enum CaptureAudioDeviceSelection {
             }
         } catch {
             #if DEBUG
-            print("\(BuildInfo.appName) iOS audio session setup failed before device selection: \(error)")
+            NSLog("[iOSAudioSession] setup failed before device selection: \(error)")
             #endif
         }
         #endif

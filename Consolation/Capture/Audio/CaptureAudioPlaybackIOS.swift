@@ -60,26 +60,26 @@ extension CaptureAudioPlayback {
 
     nonisolated private func logIOSAudioMissingFormatDescription() {
         #if DEBUG
-        print("\(BuildInfo.appName) iOS audio: sample buffer missing format description")
+        NSLog("[iOSAudio] sample buffer missing format description")
         #endif
     }
 
     nonisolated private func logIOSAudioInvalidSourceFormat(_ sourceFormat: AVAudioFormat) {
         #if DEBUG
-        print("\(BuildInfo.appName) iOS audio: invalid source format \(sourceFormat)")
+        NSLog("[iOSAudio] invalid source format \(sourceFormat)")
         #endif
     }
 
     nonisolated private func logIOSAudioFailedToStartEngine(_ error: Error) {
         #if DEBUG
-        print("\(BuildInfo.appName) iOS audio: failed to start engine: \(error)")
+        NSLog("[iOSAudio] failed to start engine: \(error)")
         #endif
     }
 
     nonisolated private func logIOSAudioFailedToConvert(sourceFormat: AVAudioFormat, playFormat: AVAudioFormat) {
         #if DEBUG
-        print(
-            "\(BuildInfo.appName) iOS audio: failed to convert sample buffer " +
+        NSLog(
+            "[iOSAudio] failed to convert sample buffer " +
             "from \(sourceFormat) to \(playFormat)"
         )
         #endif

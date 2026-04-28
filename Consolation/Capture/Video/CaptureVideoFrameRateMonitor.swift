@@ -56,8 +56,8 @@ nonisolated final class CaptureVideoFrameRateMonitor: NSObject, AVCaptureVideoDa
             maxPresentationGap: maxPresentationGap
         )
         #if DEBUG
-        print(
-            "\(BuildInfo.appName) video delivered fps: wall=\(wallFPS), presentation=\(presentationFPS), " +
+        NSLog(
+            "[VideoFPS] delivered: wall=\(wallFPS), presentation=\(presentationFPS), " +
             "frames=\(frameCount), dropped=\(droppedFrameCount), " +
             "maxPresentationGap=\(maxPresentationGap)"
         )

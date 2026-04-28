@@ -275,7 +275,7 @@ actor CaptureSessionBackend {
             updateActiveNominalFrameRate(device: device)
         } catch {
             #if DEBUG
-            print("\(BuildInfo.appName) video: failed to reapply format after startRunning: \(error)")
+            NSLog("[VideoCapture] failed to reapply format after startRunning: \(error)")
             #endif
         }
     }
@@ -312,8 +312,8 @@ private extension CaptureSessionBackend {
         let minFPS = minDuration.seconds > 0 ? 1 / minDuration.seconds : 0
         let maxFPS = maxDuration.seconds > 0 ? 1 / maxDuration.seconds : 0
         #if DEBUG
-        print(
-            "\(BuildInfo.appName) video active format: " +
+        NSLog(
+            "[VideoCapture] active format: " +
             "\(CaptureFormatSelector.videoFormatDescription(device.activeFormat)), " +
             "minFPS=\(minFPS), maxFPS=\(maxFPS)"
         )

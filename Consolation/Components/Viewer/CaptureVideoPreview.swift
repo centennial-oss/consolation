@@ -286,7 +286,7 @@ final class IOSPreviewView: UIView {
             connection.videoRotationAngle = angle
         } else {
             #if DEBUG
-            print("\(BuildInfo.appName) iOS video: preview rotation angle \(angle) is not supported")
+            NSLog("[iOSVideo]: preview rotation angle \(angle) is not supported")
             #endif
         }
         #endif
