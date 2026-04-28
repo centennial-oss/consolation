@@ -52,7 +52,7 @@ enum CaptureDeviceCompatibilityIssues: Sendable {
             uniqueID: "2109",
             modelID: nil,
             summary: "MacroSilicon 2109 capture devices may not deliver the requested frame rate " +
-                "on iPad when using 1920x1080 at 60p. During playback, \(BuildInfo.appName) may " +
+                "on iPad when using 1920x1080 at 60p. During playback, \(AppIdentifier.name) may " +
                 "report that the card is operating at 30p. If you " +
                 "experience issues and want to operate at true 60p, use 1280x720."
         ),

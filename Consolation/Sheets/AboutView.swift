@@ -8,12 +8,6 @@ import SwiftUI
 struct AboutConsolationView: View {
     let onClose: () -> Void
 
-    private let githubURL = URL(string: "https://github.com/centennial-oss/consolation")!
-    private let appStoreReviewURL = URL(
-        string: "https://apps.apple.com/us/app/\(BuildInfo.appName.lowercased())/" +
-            "id\(AppIdentifier.appStoreID)?action=write-review"
-    )!
-
     @State private var isGitHubLinkHovered = false
     @State private var isAppStoreLinkHovered = false
     @State private var didCopyBuildInfo = false
@@ -22,12 +16,18 @@ struct AboutConsolationView: View {
         VStack(alignment: .leading, spacing: 18) {
             header
 
-            Text(BuildInfo.copyright)
-                .font(.system(size: 14))
-                .foregroundStyle(.secondary)
+            Text(
+                "\(AppIdentifier.name) and the \(AppIdentifier.name) logo are trademarks of " +
+                    "\(AppIdentifier.copyrightHolder)\nAll rights reserved."
+            )
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            Divider()
 
             Label(
-                "\(BuildInfo.appName) is a USB Capture Card utility for viewing gaming consoles, Raspberry Pis, " +
+                "\(AppIdentifier.name) is a USB Capture Card utility for viewing gaming consoles, Raspberry Pis, " +
                     "and other HDMI devices on a Mac or iPad.",
                 systemImage: "play.rectangle"
             )
@@ -46,7 +46,7 @@ struct AboutConsolationView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             Label(
-                "\(BuildInfo.appName) is 100% private. It does not collect analytics or snoop on your usage. " +
+                "\(AppIdentifier.name) is 100% private. It does not collect analytics or snoop on your usage. " +
                     "Nothing ever leaves your device. Period.",
                 systemImage: "shield"
             )
@@ -63,8 +63,8 @@ struct AboutConsolationView: View {
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Link(destination: githubURL) {
-                Label("GitHub: centennial-oss/consolation",
+            Link(destination: AppIdentifier.repoURL) {
+                Label("GitHub: \(AppIdentifier.repoPath)",
                 systemImage: "arrow.up.right.square"
             )
                     .foregroundStyle(linkColor)
@@ -77,9 +77,11 @@ struct AboutConsolationView: View {
 
             buildInfoSection
 
+            Divider()
+
             HStack(spacing: 12) {
-                Link(destination: appStoreReviewURL) {
-                    Label("Rate \(BuildInfo.appName) on the App Store",
+                Link(destination: AppIdentifier.appleStoreReviewURL) {
+                    Label("Rate \(AppIdentifier.name) on the App Store",
                     systemImage: "star.leadinghalf.filled"
                 )
                         .foregroundStyle(linkColor)
@@ -116,13 +118,18 @@ struct AboutConsolationView: View {
             AppIconImage()
                 .frame(width: 64, height: 64)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .lastTextBaseline, spacing: 6) {
+                    Text(AppIdentifier.nameTM)
+                        .font(.system(size: 30, weight: .semibold))
 
-            HStack(alignment: .lastTextBaseline, spacing: 6) {
-                Text(BuildInfo.appName)
-                    .font(.system(size: 30, weight: .semibold))
+                    Text("v" + BuildInfo.version)
+                        .font(.system(size: 15))
+                        .foregroundStyle(.secondary)
+                }
 
-                Text("v" + BuildInfo.version)
-                    .font(.system(size: 15))
+                Text(AppIdentifier.copyright)
+                    .font(.system(size: 13))
                     .foregroundStyle(.secondary)
             }
         }
@@ -133,21 +140,33 @@ struct AboutConsolationView: View {
             Label("Build info (copy for support)", systemImage: "doc.text")
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
-
-            Text(BuildInfo.copyableBlob)
-                .font(.system(size: 14, design: .monospaced))
-                .textSelection(.enabled)
-                .padding(12)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-            Button(didCopyBuildInfo ? "✓ Copied" : "Copy to Clipboard") {
-                copyBuildInfo()
+            ZStack(alignment: .topTrailing) {
+                HStack(alignment: .top, spacing: 12) {
+                    Text(BuildInfo.copyableBlob)
+                        .font(.system(size: 14, design: .monospaced))
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, minHeight: 84, alignment: .leading)
+                    Spacer()
+                }
+                Button(didCopyBuildInfo ? "✓ Copied" : "Copy to Clipboard") {
+                    copyBuildInfo()
+                }
+                .font(.system(size: 15))
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
+                #if os(macOS)
+                .controlSize(.large)
+                #else
+                .controlSize(.regular)
+                #endif
+                .padding(.trailing, 0)
+                .padding(.top, 8)
             }
-            .font(.system(size: 15))
-            .buttonStyle(.bordered)
-            .controlSize(.large)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 

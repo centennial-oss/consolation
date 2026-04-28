@@ -73,12 +73,12 @@ struct ConsolationApp: App {
             CommandGroup(replacing: .newItem) {}
             #endif
             CommandGroup(replacing: .appInfo) {
-                Button("About \(BuildInfo.appName)") {
+                Button("About \(AppIdentifier.name)") {
                     NotificationCenter.default.post(name: .showAboutCommand, object: nil)
                 }
             }
             CommandGroup(replacing: .help) {
-                Button("\(BuildInfo.appName) Help") {
+                Button("\(AppIdentifier.name) Help") {
                     NotificationCenter.default.post(name: .showHelpCommand, object: nil)
                 }
                 .keyboardShortcut("?", modifiers: [.command])

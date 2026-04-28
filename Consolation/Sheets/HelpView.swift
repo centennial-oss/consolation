@@ -15,13 +15,13 @@ struct HelpConsolationView: View {
 
             helpSection(
                 title: "Getting Started",
-                systemImage: "play.rectangle",
+                systemImage: "play.circle",
                 body: "Connect a USB capture device, select it from the list, and press the Play button."
             )
 
             helpSection(
                 title: "Frame Rate",
-                systemImage: "lightbulb",
+                systemImage: "figure.run",
                 body: "For best results, select a frame rate that is equal to or higher than the frame rate " +
                     "of the source input. If playback frame rate is lower than expected, avoid USB hubs and " +
                     "replace low-quality cables."
@@ -54,9 +54,9 @@ struct HelpConsolationView: View {
             helpSection(
                 title: "Device Support",
                 systemImage: "externaldrive.connected.to.line.below",
-                body: "While any USB Video Class (UVC) device should work with \(BuildInfo.appName), video " +
-                    "quality ultimately depends on the capture device hardware. Some devices " +
-                    " may advertise resolutions and frame rates beyond their actual capabilities."
+                body: "While any USB Video Class (UVC) device should work with \(AppIdentifier.name), " +
+                    "video quality ultimately depends on the capture device hardware. Some devices " +
+                    "may advertise resolutions and frame rates beyond their actual capabilities."
             )
 
             Divider()
@@ -90,7 +90,7 @@ struct HelpConsolationView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(BuildInfo.appName) Help")
+                Text("\(AppIdentifier.name) Help")
                     .font(.system(size: 26, weight: .semibold))
             }
         }

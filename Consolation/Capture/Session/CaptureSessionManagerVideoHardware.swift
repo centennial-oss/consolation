@@ -133,10 +133,10 @@ extension CaptureSessionManager {
 
     private func rawVideoCapabilitiesSignature(devices: [AVCaptureDevice]) -> String {
         guard !devices.isEmpty else {
-            return "\(BuildInfo.appName) video capabilities changed:\n  (no video devices found)"
+            return "\(AppIdentifier.name) video capabilities changed:\n  (no video devices found)"
         }
 
-        var lines: [String] = ["\(BuildInfo.appName) video capabilities changed:"]
+        var lines: [String] = ["\(AppIdentifier.name) video capabilities changed:"]
         for device in devices {
             lines.append("Device: \(device.localizedName) [\(device.uniqueID)]")
             lines.append("  localizedName: \(device.localizedName)")

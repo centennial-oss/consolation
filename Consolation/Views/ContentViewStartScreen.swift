@@ -42,7 +42,7 @@ struct ContentViewStartScreen: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
             HStack(alignment: .lastTextBaseline, spacing: 6) {
-                Text(BuildInfo.appName)
+                Text(AppIdentifier.name)
                     .font(.system(size: 36, weight: .bold))
                     .foregroundStyle(.white)
 
