@@ -1,4 +1,4 @@
-# <img src="assets/app-icon.png" alt="Consolation" height="48" /> Consolation [<img align="right" src="assets/download-app-store.svg" />](https://apps.apple.com/us/app/consolation/id1563856788)
+# <img src="assets/app-icon.png" alt="Consolation" height="48" /> Consolation™ [<img align="right" src="assets/download-app-store.svg" />](https://apps.apple.com/us/app/consolation/id1563856788)
 
 A no-frills video capture viewer for macOS and iPadOS.
 
@@ -66,6 +66,6 @@ While we welcome pull requests and other contributions from other humans, includ
 
 ## Trademark Notice
 
-Consolation and its logo are trademarks of Centennial OSS, Inc.
+Consolation and its logo are trademarks of Centennial OSS Inc.
 Use of the name and branding is not permitted for modified versions or forks without permission.
 See TRADEMARKS.md for details.
