@@ -17,7 +17,7 @@ APPICON_BG := assets/app-icon-background-large.png
 APPICON_TRANSPARENT_SRC := assets/app-icon-large-transparent.png
 APPICON_LARGE := assets/app-icon-large.png
 APPICON_PREVIEW := assets/app-icon.png
-BUILD_INFO := Consolation/BuildInfo.generated.swift
+BUILD_INFO := Consolation/AppData/BuildInfo.generated.swift
 
 COMMIT ?= $(shell git rev-parse HEAD 2>/dev/null || echo local)
 DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%S.000Z")
