@@ -132,6 +132,19 @@ extension ContentView {
                 iconColor: isFullscreenActive ? .accentColor : .white,
                 action: { window?.toggleFullScreen(nil) }
             )
+            #elseif os(iOS)
+            PlaybackToolbarDivider()
+
+            PlaybackToolbarMenu(
+                systemName: "gearshape.fill",
+                accessibilityLabel: "Settings",
+                iconColor: .white,
+                isPresented: $isPlaybackSettingsMenuPresented,
+                onPresentedChanged: handlePlaybackSettingsMenuPresentedChanged(_:)
+            ) {
+                IPadSettingsMenuContent(selectedVideoDeviceUniqueID: capture.selectedVideoDeviceUniqueID)
+            }
+            .equatable()
             #endif
         }
         .padding(.horizontal, 8)
@@ -174,6 +187,17 @@ extension ContentView {
         isPlaybackControlsInteractionActive = false
         resetHoverTimer()
     }
+
+    #if os(iOS)
+    func handlePlaybackSettingsMenuPresentedChanged(_ isPresented: Bool) {
+        if isPresented {
+            cancelHoverHideTask()
+            revealTransientChromeIfNeeded()
+        } else {
+            resetHoverTimer()
+        }
+    }
+    #endif
 
     #if os(macOS)
     var isFullscreenActive: Bool {

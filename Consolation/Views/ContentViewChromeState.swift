@@ -46,6 +46,14 @@ extension ContentView {
             return
         }
 
+        #if os(iOS)
+        guard !isPlaybackSettingsMenuPresented else {
+            cancelHoverHideTask()
+            revealTransientChromeIfNeeded()
+            return
+        }
+        #endif
+
         guard capture.state == .running else {
             cancelAutoHideChrome()
             return

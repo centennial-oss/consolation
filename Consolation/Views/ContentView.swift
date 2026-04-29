@@ -20,6 +20,9 @@ struct ContentView: View {
     @State private var isShowingHelp = false
     @State var isPlaybackControlsInteractionActive = false
     @State var isPlaybackControlsHoverActive = false
+    #if os(iOS)
+    @State var isPlaybackSettingsMenuPresented = false
+    #endif
     #if os(macOS)
     @State var isAppMenuTracking = false
     #endif
