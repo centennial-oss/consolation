@@ -53,7 +53,7 @@ struct PlaybackToolbarMenu<Content: View>: View, Equatable {
                 .tint(.primary)
                 .presentationCompactAdaptation(.popover)
                 .onDisappear {
-                    // Backup when `onChange(of: isPresented)` is flaky (nested menus); defer matches other dismiss paths.
+                    // Backup for flaky `onChange(of: isPresented)` (nested menus); defer matches other dismiss paths.
                     DispatchQueue.main.async {
                         onPresentedChanged(false)
                     }
