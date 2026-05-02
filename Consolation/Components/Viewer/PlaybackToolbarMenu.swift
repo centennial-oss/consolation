@@ -52,6 +52,12 @@ struct PlaybackToolbarMenu<Content: View>: View, Equatable {
                 .frame(width: 280, alignment: .leading)
                 .tint(.primary)
                 .presentationCompactAdaptation(.popover)
+                .onDisappear {
+                    // Backup when `onChange(of: isPresented)` is flaky (nested menus); defer matches other dismiss paths.
+                    DispatchQueue.main.async {
+                        onPresentedChanged(false)
+                    }
+                }
         }
         .onChange(of: isPresented) { _, newValue in
             onPresentedChanged(newValue)
@@ -62,6 +68,9 @@ struct PlaybackToolbarMenu<Content: View>: View, Equatable {
 
 struct IPadSettingsMenuContent: View, Equatable {
     let selectedVideoDeviceUniqueID: String?
+
+    @Environment(\.dismiss) private var dismiss
+
     @AppStorage(CaptureVideoStatsUserDefaults.showStatsKey) var showVideoStats = false
     @AppStorage(CaptureVideoStatsUserDefaults.statsLocationKey)
     var videoStatsLocationRawValue = CaptureVideoStatsUserDefaults.defaultLocation
@@ -85,12 +94,14 @@ struct IPadSettingsMenuContent: View, Equatable {
             Divider()
             Button("\(AppIdentifier.name) Help") {
                 NotificationCenter.default.post(name: .showHelpCommand, object: nil)
+                dismissPopoverAfterSelection()
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             Button("About \(AppIdentifier.name)") {
                 NotificationCenter.default.post(name: .showAboutCommand, object: nil)
+                dismissPopoverAfterSelection()
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 16)
@@ -110,12 +121,13 @@ struct IPadSettingsMenuContent: View, Equatable {
         .buttonStyle(.plain)
     }
 
-        private var lowFPSMenu: some View {
+    private var lowFPSMenu: some View {
         Menu {
             Button {
                 disableLowFPSWarningOverlay.toggle()
+                dismissPopoverAfterSelection()
             } label: {
-                if disableLowFPSWarningOverlay {
+                if !disableLowFPSWarningOverlay {
                     Label("On", systemImage: "checkmark")
                 } else {
                     Text("On")
@@ -123,8 +135,9 @@ struct IPadSettingsMenuContent: View, Equatable {
             }
             Button {
                 disableLowFPSWarningOverlay.toggle()
+                dismissPopoverAfterSelection()
             } label: {
-                if !disableLowFPSWarningOverlay {
+                if disableLowFPSWarningOverlay {
                     Label("Off", systemImage: "checkmark")
                 } else {
                     Text("Off")
@@ -194,6 +207,7 @@ struct IPadSettingsMenuContent: View, Equatable {
             } else {
                 showVideoStats = false
             }
+            dismissPopoverAfterSelection()
         } label: {
             if isSelected {
                 Label(title, systemImage: "checkmark")
@@ -225,6 +239,7 @@ struct IPadSettingsMenuContent: View, Equatable {
                 forDeviceID: selectedVideoDeviceUniqueID
             )
             previewTransformMenuRefresh += 1
+            dismissPopoverAfterSelection()
         } label: {
             if transform.rotation == rotation {
                 Label(rotation.menuTitle, systemImage: "checkmark")
@@ -253,6 +268,7 @@ struct IPadSettingsMenuContent: View, Equatable {
                 forDeviceID: selectedVideoDeviceUniqueID
             )
             previewTransformMenuRefresh += 1
+            dismissPopoverAfterSelection()
         } label: {
             if isSelected {
                 Label(title, systemImage: "checkmark")
@@ -271,12 +287,21 @@ struct IPadSettingsMenuContent: View, Equatable {
         Button {
             audioBufferLength = length
             NotificationCenter.default.post(name: .audioBufferLengthCommand, object: length)
+            dismissPopoverAfterSelection()
         } label: {
             if audioBufferLength == length {
                 Label(label, systemImage: "checkmark")
             } else {
                 Text(label)
             }
+        }
+    }
+
+    /// Nested `Menu` actions complete after SwiftUI updates; deferring avoids fighting UIKit menu teardown
+    /// and forces the settings popover (and submenu snapshots) to disappear so the next open shows fresh state.
+    private func dismissPopoverAfterSelection() {
+        DispatchQueue.main.async {
+            dismiss()
         }
     }
 }

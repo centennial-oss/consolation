@@ -109,7 +109,11 @@ struct ContentView: View {
         .simultaneousGesture(
             TapGesture().onEnded {
                 guard capture.state == .running else { return }
-                resetHoverTimer()
+                // Defer so a tap that dismisses the settings popover runs after `isPlaybackSettingsMenuPresented`
+                // updates; otherwise `resetHoverTimer()` can see the menu as still open and skip scheduling hide.
+                DispatchQueue.main.async {
+                    resetHoverTimer()
+                }
             }
         )
         #endif
