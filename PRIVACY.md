@@ -28,4 +28,4 @@ We may update this policy occasionally, but will never snoop on you or collect a
 
 ## Contact
 
-Questions? Open an issue at [github.com/centennial-oss/consolation/issues](https://github.com/centennial-oss/consolation/issues).
+Questions? Open an issue at [github.com/centennial-oss/consolation-apple/issues](https://github.com/centennial-oss/consolation-apple/issues).
