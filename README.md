@@ -4,6 +4,8 @@ A no-frills video capture viewer for macOS and iPadOS.
 
 Consolation is [available in the App Store](https://apps.apple.com/us/app/consolation/id1563856788) or can be downloaded directly from [this project's releases](https://github.com/centennial-oss/consolation-apple/releases).
 
+Consolation is also availble for Android tablets ([GitHub](https://github.com/centennial-oss/consolation-android) | [Play Store](https://play.google.com/store/apps/details?id=org.centennialoss.consolation)), Windows ([GitHub](https://github.com/centennial-oss/consolation-windows) | [Microsoft Store](https://apps.microsoft.com/detail/9N96T6XGBFTF?hl=en-us&gl=US)) and Linux ([GitHub](https://github.com/centennial-oss/consolation-linux)).
+
 ## About
 
 Consolation is a free app that enables your Mac or iPad to be used as a screen for devices like gaming consoles, Raspberry Pis, and even a Mac mini, via a standard USB Video Class (UVC) video capture card.
