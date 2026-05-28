@@ -24,6 +24,8 @@ The app is intentionally simple: watch the live video in a window or full screen
 
 Consolation does not collect, send, or share your data. Audio and video stay local and transient while you are watching a connected capture device. The app is open source, contains no trackers or analytics, makes no network calls, and does not record, stream, save, or analyze audio or video. Nothing leaves your device - ever.
 
+Read the full privacy policy at [PRIVACY.md](PRIVACY.md) or <https://centennialoss.org/privacy/>.
+
 ## Supported Capture Devices
 
 Any capture device that appears to the system through AVFoundation as a USB Video Class (UVC) capture devices should work with Consolation.
