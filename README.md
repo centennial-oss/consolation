@@ -2,7 +2,7 @@
 
 A no-frills video capture viewer for macOS and iPadOS.
 
-Consolation is [available in the App Store](https://apps.apple.com/us/app/consolation/id1563856788) or can be downloaded directly from [this project's releases](https://github.com/centennial-oss/consolation/releases).
+Consolation is [available in the App Store](https://apps.apple.com/us/app/consolation/id1563856788) or can be downloaded directly from [this project's releases](https://github.com/centennial-oss/consolation-apple/releases).
 
 ## About
 
@@ -26,20 +26,22 @@ Consolation does not collect, send, or share your data. Audio and video stay loc
 
 Any capture device that appears to the system through AVFoundation as a USB Video Class (UVC) capture devices should work with Consolation.
 
-Consolation has been tested by the developers with these capture devices:
+Consolation has been tested by the developers on Intel and Apple Silicon Macs and iPad Pro with these capture devices:
 
-- acer USB 3.0 Video Capture Card (model OCB5B0)
-- WANKEDA 4K Capture Card 1080p 60FPS for Streaming (1da603d4)
-- Elgato HD60 X
+- Elgato HD60 X - 👌 🚀
+- Acer USB 3.0 Video Capture Card (model OCB5B0) - 👌 🚀
+- WANKEDA 4K Capture Card 1080p 60FPS for Streaming (1da603d4) - 👌 🚀
+- blueAVS 4K Capture Card (A3-B) - 👌 🚀
+- Guermok Video Capture Card (GM-29A) - 👌 🚀
+- PERESAL USB 3.0 Video Capture Card with PD 100W - 👌 🚀
 - UGREEN Full HD 1080p Capture Card (model 40189) -  ⚠️ max 30p @ 1920x1080
 
 ## Requirements
 
 ### Running
 
-- Apple Silicon device with a USB port
-- macOS 15 or higher
-- iPadOS 18 or higher
+- iPad with USB Port, or Apple Silicon or Intel Mac computer
+- iPadOS 18 or higher, or macOS 15 or higher
 - A UVC-compliant video capture card
 
 ### Developer
@@ -62,7 +64,7 @@ Consolation has been tested by the developers with these capture devices:
 
 Humans write this software with AI assistance. All contributions are well-tested and merged only after being reviewed and approved by humans who fully understand and take responsibility for the contribution.
 
-While we welcome pull requests and other contributions from other humans, including AI-generated code, we do not accept contributions from AI bots. A human must review, understand, and sign off on all commits. Please file an issue to discuss any proposed feature before working on it.
+While we welcome pull requests and other contributions from other humans, including AI-generated code, we do not accept contributions from AI bots. A human must review, understand, and sign off on all commits. All contributors must be able to defend their contributions under reasonable technical scrutiny. Please file an issue to discuss any proposed feature before working on it.
 
 ## Trademark Notice
 
