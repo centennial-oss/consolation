@@ -354,7 +354,7 @@ jobs:
             -authenticationKeyPath ~/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             ${{ env.SCHEME_NAME }}-*-macOS-universal.zip
