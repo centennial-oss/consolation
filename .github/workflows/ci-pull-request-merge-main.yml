@@ -1,9 +1,16 @@
-name: Pull Request
+name: CI (Pull Request and Merge to Main)
 
 on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
@@ -37,5 +44,4 @@ jobs:
 
       - name: Run clean, test, and build
         run: |
-          make clean test build
-
+          make clean test ${{ github.event_name == 'pull_request' && 'build' || 'build-release-unsigned' }}
