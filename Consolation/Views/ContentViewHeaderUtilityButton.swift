@@ -26,14 +26,14 @@ struct ContentViewHeaderUtilityButton: View {
             Label(title, systemImage: systemImage)
                 .font(.system(size: 13, weight: .semibold))
                 .labelStyle(.titleAndIcon)
-                .foregroundStyle(.white.opacity(0.88))
+                .foregroundStyle(Color.primary.opacity(0.88))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
-                .background(Color.white.opacity(0.08), in: Capsule())
+                .background(Color.primary.opacity(0.08), in: Capsule())
                 .overlay {
                     Capsule()
                         .strokeBorder(
-                            Color.white.opacity(isHovered ? 1 : 0.16),
+                            Color.primary.opacity(isHovered ? 1 : 0.16),
                             lineWidth: 1
                         )
                 }
