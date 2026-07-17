@@ -25,7 +25,7 @@ struct ContentViewConnectPanel: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Device")
                 .font(.title3.weight(.bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
             HStack(spacing: 8) {
                 Menu {
                     Section("Video Capture Cards") {
@@ -94,7 +94,7 @@ struct ContentViewConnectPanel: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Resolution")
                     .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                 resolutionMenu(for: device)
                     .disabled(capture.hasNoVideoDevices || isConnecting)
             }
@@ -102,7 +102,7 @@ struct ContentViewConnectPanel: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Resolution")
                     .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                 ConnectPanelPillLabel(value: "—")
                     .opacity(0.45)
                     .allowsHitTesting(false)
@@ -203,21 +203,21 @@ private struct ConnectPanelPillLabel: View {
         HStack(alignment: .center, spacing: 12) {
             Text(value)
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
             Image(systemName: "chevron.down")
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.08), in: Capsule())
+        .background(Color.primary.opacity(0.08), in: Capsule())
         .overlay {
             Capsule()
-                .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                .strokeBorder(Color.primary.opacity(0.18), lineWidth: 1)
         }
         .contentShape(Capsule())
     }
@@ -235,7 +235,7 @@ private struct CaptureDeviceCompatibilityIssueView: View {
                     .font(.title)
                 Text("Capture Card Compatibility")
                     .font(.title.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
             }
             .padding(.vertical, 16)
 

@@ -44,11 +44,11 @@ struct ContentViewStartScreen: View {
             HStack(alignment: .lastTextBaseline, spacing: 6) {
                 Text(AppIdentifier.name)
                     .font(.system(size: 36, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
 
                 Text("v" + BuildInfo.version)
                     .font(.system(size: 16))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(.secondary)
             }
             .multilineTextAlignment(.center)
         }

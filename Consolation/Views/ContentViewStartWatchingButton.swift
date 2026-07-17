@@ -15,16 +15,16 @@ struct ContentViewStartWatchingButton: View {
         } label: {
             ZStack {
                 Circle()
-                    .fill(Color.white.opacity(0.16))
+                    .fill(Color.primary.opacity(0.16))
                 Image(systemName: "play.fill")
                     .font(.system(size: 36, weight: .semibold))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Color.primary)
                     .allowsHitTesting(false)
             }
             .overlay {
                 if isHovered {
                     Circle()
-                        .strokeBorder(Color.white.opacity(0.88), lineWidth: 1)
+                        .strokeBorder(Color.primary.opacity(0.88), lineWidth: 1)
                 }
             }
             .frame(width: 72, height: 72)
